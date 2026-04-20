@@ -2,9 +2,47 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { supabase } from '@/lib/supabase'
 
 export default function SuccessorPortal() {
   const [cairnId, setCairnId] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  async function accessArchive() {
+    setError('')
+    setLoading(true)
+
+    if (!cairnId.match(/^CZ-[A-Z0-9]{4}$/)) {
+      setError('Invalid Cairn ID format. Please enter CZ-XXXX')
+      setLoading(false)
+      return
+    }
+
+    try {
+      // Check if device exists
+      const { data, error } = await supabase
+        .from('cairn_devices')
+        .select('*, profiles(*)')
+        .eq('cairn_id', cairnId)
+        .single()
+
+      if (error || !data) {
+        setError('Cairn ID not found. Please verify the ID on your physical device.')
+        setLoading(false)
+        return
+      }
+
+      // Log succession event
+      // Additional succession logic would go here
+
+      alert('Device found! Succession protocol initiated.')
+    } catch (err: any) {
+      setError('An error occurred. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gray-900">
@@ -37,16 +75,27 @@ export default function SuccessorPortal() {
           <p className="text-gray-400 mb-6">
             Enter the 6-character Cairn ID found on your physical device to access the succession bridge.
           </p>
+          
+          {error && (
+            <div className="mb-6 p-4 bg-red-900 border border-red-700 rounded-lg text-red-200">
+              {error}
+            </div>
+          )}
+          
           <input
             type="text"
             placeholder="CZ-XXXX"
-            className="w-full px-6 py-4 bg-gray-900 text-white border border-gray-700 rounded text-xl text-center tracking-widest mb-6"
+            className="w-full px-6 py-4 bg-gray-900 text-white border border-gray-700 rounded text-xl text-center tracking-widest mb-6 uppercase"
             value={cairnId}
             onChange={(e) => setCairnId(e.target.value.toUpperCase())}
             maxLength={7}
           />
-          <button className="w-full px-6 py-4 bg-amber-600 text-white rounded hover:bg-amber-700 transition-colors text-lg font-bold">
-            Access Archive
+          <button 
+            onClick={accessArchive}
+            disabled={loading}
+            className="w-full px-6 py-4 bg-amber-600 text-white rounded hover:bg-amber-700 transition-colors text-lg font-bold disabled:opacity-50"
+          >
+            {loading ? 'Verifying...' : 'Access Archive'}
           </button>
           
           <div className="mt-8 p-4 bg-gray-900 rounded border border-gray-700">
