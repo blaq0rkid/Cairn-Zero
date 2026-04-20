@@ -2,8 +2,8 @@
 const nextConfig = {
   images: {
     domains: ['cdn.marblism.com'],
+    unoptimized: true,
   },
-  output: 'export',
 }
 
 module.exports = nextConfig
