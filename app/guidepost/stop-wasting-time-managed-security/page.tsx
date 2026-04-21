@@ -1,3 +1,4 @@
+
 import Navigation from '@/components/Navigation'
 import Footer from '@/components/Footer'
 import Link from 'next/link'
@@ -9,11 +10,11 @@ export default function BlogPost() {
       <Navigation />
       <article className="pt-24 pb-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-3xl mx-auto">
-          <Link href="/blog" className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-8">
+          <Link href="/guidepost" className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-8">
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-            Back to Blog
+            Back to The Guidepost
           </Link>
 
           <div className="mb-8">
@@ -21,7 +22,7 @@ export default function BlogPost() {
               <span className="bg-gray-100 px-3 py-1 rounded-full">Security</span>
               <span>April 7, 2026</span>
               <span>•</span>
-              <span>Aeron Carter, blog writer</span>
+              <span>Aeron Carter, Certainty Strategist</span>
             </div>
             
             <h1 className="text-4xl font-bold text-gray-900 mb-4">
@@ -45,11 +46,12 @@ export default function BlogPost() {
 
             <div className="my-8">
               <Image
-                src="/api/placeholder/800/400"
+                src="https://cdn.marblism.com/L53XJPZahcb.webp"
                 alt="Complexity vs effectiveness in managed security services"
                 width={800}
                 height={400}
                 className="rounded-lg"
+                unoptimized
               />
               <p className="text-sm text-gray-600 text-center mt-2 italic">
                 Managed security adds layers of complexity that don't address founder succession gaps
@@ -98,11 +100,12 @@ export default function BlogPost() {
 
             <div className="my-8">
               <Image
-                src="/api/placeholder/800/450"
+                src="https://cdn.marblism.com/nKZa5b3V2yC.webp"
                 alt="Simple sovereignty model vs complex managed security layers"
                 width={800}
                 height={450}
                 className="rounded-lg"
+                unoptimized
               />
               <p className="text-sm text-gray-600 text-center mt-2 italic">
                 Physical sovereignty eliminates vendor dependencies and succession complexity
@@ -154,6 +157,20 @@ export default function BlogPost() {
             <p>
               You pay less and get what actually matters: guaranteed succession continuity.
             </p>
+
+            <div className="my-8">
+              <Image
+                src="https://cdn.marblism.com/UYWUUFipHEa.webp"
+                alt="Cost-benefit analysis of simple sovereignty vs managed security"
+                width={800}
+                height={450}
+                className="rounded-lg"
+                unoptimized
+              />
+              <p className="text-sm text-gray-600 text-center mt-2 italic">
+                Simple sovereignty delivers better succession outcomes at lower cost
+              </p>
+            </div>
 
             <h2>When Managed Security Makes Sense</h2>
             <p>
