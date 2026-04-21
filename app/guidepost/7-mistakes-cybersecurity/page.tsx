@@ -1,3 +1,4 @@
+
 import Navigation from '@/components/Navigation'
 import Footer from '@/components/Footer'
 import Link from 'next/link'
@@ -9,11 +10,11 @@ export default function BlogPost() {
       <Navigation />
       <article className="pt-24 pb-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-3xl mx-auto">
-          <Link href="/blog" className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-8">
+          <Link href="/guidepost" className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-8">
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-            Back to Blog
+            Back to The Guidepost
           </Link>
 
           <div className="mb-8">
@@ -21,7 +22,7 @@ export default function BlogPost() {
               <span className="bg-gray-100 px-3 py-1 rounded-full">Security</span>
               <span>April 15, 2026</span>
               <span>•</span>
-              <span>Aeron Carter, blog writer</span>
+              <span>Aeron Carter, Certainty Strategist</span>
             </div>
             
             <h1 className="text-4xl font-bold text-gray-900 mb-4">
@@ -41,11 +42,12 @@ export default function BlogPost() {
 
             <div className="my-8">
               <Image
-                src="/api/placeholder/800/400"
+                src="https://cdn.marblism.com/d-vfzMa3XDo.webp"
                 alt="Scattered password silos across multiple browsers and devices"
                 width={800}
                 height={400}
                 className="rounded-lg"
+                unoptimized
               />
               <p className="text-sm text-gray-600 text-center mt-2 italic">
                 Browser-stored passwords create fragmented silos that become unrecoverable during succession
@@ -72,11 +74,12 @@ export default function BlogPost() {
 
             <div className="my-8">
               <Image
-                src="/api/placeholder/800/450"
+                src="https://cdn.marblism.com/TU7YuumZwcm.webp"
                 alt="Succession simulation workflow showing testing without live access"
                 width={800}
                 height={450}
                 className="rounded-lg"
+                unoptimized
               />
               <p className="text-sm text-gray-600 text-center mt-2 italic">
                 Dry run succession simulations validate your plan without exposing real credentials
@@ -100,6 +103,20 @@ export default function BlogPost() {
             <p>
               Giving multiple people access "just in case" creates succession wars. Who's authorized to make decisions? Who represents the business to clients? Simultaneous access causes chaos, not continuity.
             </p>
+
+            <div className="my-8">
+              <Image
+                src="https://cdn.marblism.com/tCf66eZ1AYO.webp"
+                alt="Sequential succession preventing conflicts"
+                width={800}
+                height={450}
+                className="rounded-lg"
+                unoptimized
+              />
+              <p className="text-sm text-gray-600 text-center mt-2 italic">
+                Sequential succession maintains clear authority during handoff
+              </p>
+            </div>
 
             <p>
               <strong>The Fix:</strong> Sequential succession. Successor 1 gets a 7-day window to respond. Only after they fail to claim access does Successor 2 get notified. This prevents conflicts and maintains clear authority.
