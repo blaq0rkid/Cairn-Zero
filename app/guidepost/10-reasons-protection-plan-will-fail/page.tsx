@@ -1,3 +1,4 @@
+
 import Navigation from '@/components/Navigation'
 import Footer from '@/components/Footer'
 import Link from 'next/link'
@@ -9,11 +10,11 @@ export default function BlogPost() {
       <Navigation />
       <article className="pt-24 pb-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-3xl mx-auto">
-          <Link href="/blog" className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-8">
+          <Link href="/guidepost" className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-8">
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-            Back to Blog
+            Back to The Guidepost
           </Link>
 
           <div className="mb-8">
@@ -21,7 +22,7 @@ export default function BlogPost() {
               <span className="bg-gray-100 px-3 py-1 rounded-full">Business Continuity</span>
               <span>April 8, 2026</span>
               <span>•</span>
-              <span>Aeron Carter, blog writer</span>
+              <span>Aeron Carter, Certainty Strategist</span>
             </div>
             
             <h1 className="text-4xl font-bold text-gray-900 mb-4">
@@ -45,11 +46,12 @@ export default function BlogPost() {
 
             <div className="my-8">
               <Image
-                src="/api/placeholder/800/400"
+                src="https://cdn.marblism.com/d-vfzMa3XDo.webp"
                 alt="Succession simulation testing workflow"
                 width={800}
                 height={400}
                 className="rounded-lg"
+                unoptimized
               />
               <p className="text-sm text-gray-600 text-center mt-2 italic">
                 Regular testing exposes plan weaknesses before real succession events occur
@@ -94,11 +96,12 @@ export default function BlogPost() {
 
             <div className="my-8">
               <Image
-                src="/api/placeholder/800/450"
+                src="https://cdn.marblism.com/Q334z9z7JpU.webp"
                 alt="Physical hardware keys providing offline succession capability"
                 width={800}
                 height={450}
                 className="rounded-lg"
+                unoptimized
               />
               <p className="text-sm text-gray-600 text-center mt-2 italic">
                 Hardware-based succession eliminates cloud service dependencies
@@ -149,6 +152,20 @@ export default function BlogPost() {
             <p>
               <strong>The Fix:</strong> White-glove onboarding for successors. Document not just what to access, but why it matters and how to prioritize during handoff.
             </p>
+
+            <div className="my-8">
+              <Image
+                src="https://cdn.marblism.com/D3ZCjn_-PZY.webp"
+                alt="Comprehensive successor training and preparation framework"
+                width={800}
+                height={450}
+                className="rounded-lg"
+                unoptimized
+              />
+              <p className="text-sm text-gray-600 text-center mt-2 italic">
+                Proper successor training ensures readiness before succession events occur
+              </p>
+            </div>
 
             <h2>The Common Thread</h2>
             <p>
