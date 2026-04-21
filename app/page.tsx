@@ -1,19 +1,12 @@
+// File: app/page.tsx - Update to include new sections
+import Navigation from '@/components/Navigation'
 import Hero from '@/components/Hero'
-import Problem from '@/components/Problem'
-import Solution from '@/components/Solution'
+import ProblemSection from '@/components/ProblemSection'
+import SolutionSection from '@/components/SolutionSection'
 import Pricing from '@/components/Pricing'
 import Footer from '@/components/Footer'
-import Navigation from '@/components/Navigation'
 
 export default function Home() {
-  return (
-    <main className="min-h-screen bg-white">
-      <Navigation />
-      <Hero />
-      <Problem />
-      <Solution />
-      <Pricing />
-      <Footer />
-    </main>
+  return ( main className="min-h-screen"> Navigation /> Hero /> ProblemSection /> SolutionSection /> Pricing /> Footer /> /main>
   )
 }
