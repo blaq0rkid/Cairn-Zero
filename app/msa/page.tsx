@@ -1,9 +1,10 @@
+
 import Navigation from '@/components/Navigation'
 import Footer from '@/components/Footer'
 
 export default function MSAPage() {
   return (
-    <div className="min-h-screen bg-white">
+    <>
       <Navigation />
       <div className="pt-24 pb-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto prose prose-gray">
@@ -71,40 +72,21 @@ export default function MSAPage() {
             <li><strong>NFC Integration:</strong> Passive Near Field Communication chips for tap-to-access functionality</li>
           </ul>
 
-          <p><strong>3.2 Hardware Permanence:</strong> Keys are designed as high-durability, long-lived continuity assets with 50-year minimum horizon.</p>
-
-          <p><strong>3.3 Analog Backup:</strong> Client receives stainless steel "Succession Card" for permanent physical redundancy.</p>
-
-          <p><strong>3.4 Maintenance:</strong> Client responsible for physical security of hardware keys.</p>
-
-          <p><strong>3.5 Annual Logic Verification:</strong> Annual maintenance required to maintain Durability Guarantee.</p>
-
           <h2>4. SUCCESSION LOGIC (SEQUENTIAL PROTOCOL)</h2>
           <p><strong>4.1 Sequential Order:</strong> Sequential Handoff model prevents "Succession Wars"</p>
           <p><strong>4.2 Sequential Succession Logic (Grace Period):</strong> Access granted to Successor A first</p>
           <p><strong>4.3 Default Grace Period:</strong> Seven (7) days default, customizable via Dashboard</p>
-          <p><strong>4.4 The "Window" Logic:</strong> Secondary successors only activated if Primary fails to claim</p>
-          <p><strong>4.5 Digital Attestation:</strong> Mandatory attestation required before shard release</p>
 
           <h2>5. CLIENT RESPONSIBILITIES</h2>
           <p><strong>5.1 Indexing:</strong> Client solely responsible for accuracy and currency of stored information</p>
           <p><strong>5.2 Successor Vetting:</strong> Client represents all successors are vetted and legally capable</p>
-          <p><strong>5.3 Trigger Maintenance:</strong> Client must maintain "Dead Man's Switch" and automated triggers</p>
 
           <h2>6. LIMITATION OF LIABILITY</h2>
           <p><strong>6.1 No Fiduciary Duty:</strong> Company provides technical tools only, not fiduciary services</p>
           <p><strong>6.2 Loss of Data:</strong> Company not liable for data loss due to Zero-Knowledge architecture</p>
           <p><strong>6.3 Indirect Damages:</strong> No liability for consequential, indirect, or incidental damages including business interruption</p>
 
-          <h2>7. INTELLECTUAL PROPERTY & SOVEREIGNTY</h2>
-          <p><strong>7.1 Ownership:</strong> Client retains 100% ownership of all stored data</p>
-          <p><strong>7.2 License:</strong> Non-exclusive, non-transferable license for subscription duration</p>
-
-          <h2>8. TERMINATION</h2>
-          <p><strong>8.1 Persistence:</strong> Digital "Sarcophagus" remains on blockchain but not maintained after termination</p>
-          <p><strong>8.2 Hardware:</strong> Physical keys remain Client property but cease to interface with Company endpoints</p>
-
-          <h2>9. GOVERNING LAW</h2>
+          <h2>7. GOVERNING LAW</h2>
           <p>This Agreement shall be governed by the laws of the State in which Cairn Zero is incorporated. Disputes resolved through binding arbitration.</p>
 
           <div className="mt-12 border-t-2 border-gray-300 pt-6">
@@ -114,6 +96,6 @@ export default function MSAPage() {
         </div>
       </div>
       <Footer />
-    </div>
+    </>
   )
 }
