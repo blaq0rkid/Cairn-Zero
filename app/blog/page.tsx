@@ -1,62 +1,66 @@
 
-// File: app/blog/page.tsx
-import Link from 'next/link'
 import Navigation from '@/components/Navigation'
 import Footer from '@/components/Footer'
+import Link from 'next/link'
 
 export default function BlogPage() {
   const posts = [
     {
-      id: 'effdacfc-7354-4662-91f6-96ca6366e1eb',
-      title: 'The Founder Immortality Trap',
-      excerpt: 'Why founders resist succession planning and how it puts their legacy at risk.',
-      date: 'April 2026',
-      slug: 'founder-immortality-trap'
+      id: 1,
+      title: "The Founder Immortality Trap: Why Your Business Continuity Plan Is Failing",
+      excerpt: "Most founders operate under a dangerous assumption: 'I'll always be here to handle it.' This cognitive bias—what we call the Founder Immortality Trap—creates a systemic vulnerability that can destroy decades of work in days.",
+      date: "April 16, 2026",
+      author: "Penny, Blog Writer",
+      category: "Business Continuity",
+      slug: "founder-immortality-trap"
     }
   ]
 
   return (
-    <div className="min-h-screen bg-white">
+    <>
       <Navigation />
       <div className="pt-24 pb-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-5xl font-bold text-gray-900 mb-6">
-            The Cairn Zero Blog
-          </h1>
-          <p className="text-xl text-gray-600 mb-12">
-            Insights on business continuity, succession planning, and closing the gap.
-          </p>
+          <h1 className="text-4xl font-bold mb-4 text-gray-900">Cairn Zero Insights</h1>
+          <p className="text-xl text-gray-600 mb-12">Thoughts on business continuity, succession planning, and Zero-Knowledge sovereignty.</p>
           
           <div className="flex flex-col gap-8">
             {posts.map((post) => (
-              <article key={post.id} className="bg-white p-8 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors">
-                <div className="flex items-center gap-4 mb-4">
-                  <span className="text-sm text-gray-500">{post.date}</span>
+              <article key={post.id} className="border border-gray-200 rounded-lg p-8 hover:border-gray-400 transition-colors">
+                <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
+                  <span className="bg-gray-100 px-3 py-1 rounded-full">{post.category}</span>
+                  <span>{post.date}</span>
+                  <span>•</span>
+                  <span>{post.author}</span>
                 </div>
-                <h2 className="text-3xl font-bold text-gray-900 mb-3">
-                  {post.title}
+                
+                <h2 className="text-2xl font-bold text-gray-900 mb-3 hover:text-gray-700">
+                  <Link href={`/blog/${post.slug}`}>
+                    {post.title}
+                  </Link>
                 </h2>
-                <p className="text-gray-600 mb-6">
-                  {post.excerpt}
-                </p>
+                
+                <p className="text-gray-600 mb-6">{post.excerpt}</p>
+                
                 <Link 
                   href={`/blog/${post.slug}`}
-                  className="inline-block px-6 py-2 bg-gray-900 text-white rounded hover:bg-gray-800 transition-colors"
+                  className="inline-flex items-center text-gray-900 font-semibold hover:text-gray-700"
                 >
                   Read More
+                  <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
                 </Link>
               </article>
             ))}
           </div>
 
-          <div className="mt-12 p-8 bg-gray-50 rounded-lg border border-gray-200 text-center">
-            <p className="text-gray-600">
-              More articles coming soon. Written by Penny, exploring the intersection of legacy, technology, and certainty.
-            </p>
+          <div className="mt-16 text-center">
+            <p className="text-gray-500 italic">More articles coming soon from our team.</p>
           </div>
         </div>
       </div>
       <Footer />
-    </div>
+    </>
   )
 }
