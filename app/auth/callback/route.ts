@@ -13,34 +13,33 @@ export default function AuthCallbackPage() {
   useEffect(() => {
     const handleCallback = async () => {
       try {
-        // Parse the callback parameters from the URL
-        const hashParams = new URLSearchParams(window.location.hash.substring(1))
-        const queryParams = new URLSearchParams(window.location.search)
+        // Listen for auth state changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+          if (event === 'SIGNED_IN' && session) {
+            // Successfully signed in - redirect to dashboard
+            router.push('/founder')
+          } else if (event === 'SIGNED_OUT') {
+            setError('Authentication failed. Please try again.')
+          }
+        })
+
+        // Also check current session immediately
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
         
-        // Check for error in URL params
-        const errorParam = queryParams.get('error') || hashParams.get('error')
-        if (errorParam) {
-          setError('Authentication failed. Please try again.')
+        if (sessionError) {
+          setError('Authentication error. Please try again.')
+          console.error('Session error:', sessionError.message)
           return
         }
 
-        // Get the code from either hash or query params (depending on provider)
-        const code = queryParams.get('code') || hashParams.get('code')
-        
-        if (code) {
-          // Exchange the code for a session
-          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
-          
-          if (exchangeError) {
-            setError('Failed to complete authentication. Please try again.')
-            console.error('Auth exchange error:', exchangeError.message)
-            return
-          }
-
-          // Successfully authenticated - redirect to founder dashboard
+        if (session) {
+          // Already have a valid session - redirect immediately
           router.push('/founder')
-        } else {
-          setError('No authentication code found. Please try logging in again.')
+        }
+
+        // Cleanup subscription
+        return () => {
+          subscription.unsubscribe()
         }
       } catch (err) {
         setError('An unexpected error occurred during authentication.')
