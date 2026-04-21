@@ -1,6 +1,10 @@
-export function PrivacyPage() {
+
+import Navigation from '@/components/Navigation'
+import Footer from '@/components/Footer'
+
+export default function PrivacyPage() {
   return (
-    <div className="min-h-screen bg-white">
+    <>
       <Navigation />
       <div className="pt-24 pb-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto prose prose-gray">
@@ -43,76 +47,27 @@ export function PrivacyPage() {
 
           <h3>C. Vaulted Content (Zero-Knowledge Exclusion)</h3>
           <p><strong>Zero-Knowledge Sovereignty / Client-Side Encryption:</strong> All sensitive content is encrypted client-side. Cairn Zero never receives plaintext and never has access to decryption keys.</p>
-          <ul>
-            <li><strong>Encrypted Storage:</strong> Encrypted blobs stored using Supabase with Row-Level Security</li>
-            <li><strong>No Readability:</strong> Content remains unreadable to Cairn Zero without your keys</li>
-            <li><strong>Not Used for Profiling/Ads:</strong> We do not use Vaulted Content for analytics or marketing</li>
-          </ul>
 
           <h2>3. USE OF INFORMATION</h2>
-          <p>We use collected Operational Data strictly for:</p>
-          <ul>
-            <li><strong>Service Delivery:</strong> Executing automated triggers that bridge the Succession Gap</li>
-            <li><strong>Identity Verification:</strong> Ensuring only authorized successors gain access</li>
-            <li><strong>Communication:</strong> Sending critical alerts regarding account status and security</li>
-            <li><strong>Legal Compliance:</strong> Meeting fiduciary and statutory obligations</li>
-          </ul>
+          <p>We use collected Operational Data strictly for service delivery, identity verification, communication, and legal compliance.</p>
 
           <h2>4. DATA SHARING AND DISCLOSURE</h2>
-          <p>Cairn Zero does not sell your personal information. Disclosure limited to:</p>
-          <ul>
-            <li><strong>Designated Successors:</strong> Upon activation of Succession Trigger</li>
-            <li><strong>Third-Party Processors:</strong> Limited vendors (GitHub, Netlify, payment processors) under confidentiality obligations</li>
-            <li><strong>Legal Necessity:</strong> If required by law (subpoena, court order)</li>
-            <li><strong>Business Transfers:</strong> In event of merger, acquisition, or sale of assets</li>
-          </ul>
+          <p>Cairn Zero does not sell your personal information. Disclosure limited to designated successors, third-party processors, legal necessity, and business transfers.</p>
 
-          <h2>5. THE SUCCESSION GAP & AUTOMATED TRIGGERS</h2>
-          <ul>
-            <li><strong>Trigger Mechanisms:</strong> You define parameters signaling loss of access</li>
-            <li><strong>Notification:</strong> Pre-release contact attempts to prevent accidental triggering</li>
-            <li><strong>Transfer of Sovereignty:</strong> Programmatic access granted to successors when conditions met</li>
-          </ul>
+          <h2>5. DATA SECURITY AND INTEGRITY</h2>
+          <p>We utilize industry-leading security protocols including end-to-end encryption, multi-factor authentication, and strict internal access controls.</p>
 
-          <h2>6. DATA SECURITY AND INTEGRITY</h2>
-          <p>We utilize industry-leading security protocols:</p>
-          <ul>
-            <li>End-to-end encryption for sensitive transmissions</li>
-            <li>Multi-factor authentication (MFA) requirements</li>
-            <li>Strict internal access controls</li>
-            <li>Secure hosting via GitHub/Netlify</li>
-          </ul>
+          <h2>6. YOUR RIGHTS AND SOVEREIGNTY (GDPR/CCPA)</h2>
+          <p>Depending on jurisdiction, you may have rights to access, correction, deletion, and objection.</p>
 
-          <h2>7. YOUR RIGHTS AND SOVEREIGNTY (GDPR/CCPA)</h2>
-          <p>Depending on jurisdiction, you may have rights to:</p>
-          <ul>
-            <li><strong>Access and Portability:</strong> Request access to and copy of Operational Data</li>
-            <li><strong>Correction:</strong> Request correction of inaccurate account information</li>
-            <li><strong>Deletion:</strong> Request deletion of account and Operational Data</li>
-            <li><strong>Objection / Restriction (GDPR):</strong> Object to or request restriction of processing</li>
-            <li><strong>CCPA/CPRA Rights:</strong> Right to know, delete, and correct personal information</li>
-          </ul>
-
-          <p className="bg-yellow-50 border-l-4 border-yellow-500 p-4"><strong>Important Zero-Knowledge Note:</strong> These rights apply to Operational Data we can access. We cannot access, correct, or export Vaulted Content in decrypted form.</p>
-
-          <h2>8. LIMITATION OF LIABILITY</h2>
-          <p>By using the Services, you acknowledge that loss of master encryption keys constitutes permanent loss of access, for which Cairn Zero shall not be held liable.</p>
-
-          <h2>9. INTERNATIONAL DATA TRANSFERS</h2>
-          <p>Information may be processed in the United States or other countries where service providers maintain facilities.</p>
-
-          <h2>10. CHANGES TO THIS POLICY</h2>
-          <p>We reserve the right to modify this Policy at any time. Updates posted on www.mycairnzero.com with revised "Effective Date."</p>
-
-          <h2>11. CONTACT INFORMATION</h2>
+          <h2>7. CONTACT INFORMATION</h2>
           <p>
             <strong>For privacy inquiries:</strong> legal@mycairnzero.com<br/>
-            <strong>For general support:</strong> hello@mycairnzero.com<br/>
-            <strong>Website:</strong> www.mycairnzero.com
+            <strong>For general support:</strong> hello@mycairnzero.com
           </p>
         </div>
       </div>
       <Footer />
-    </div>
+    </>
   )
 }
