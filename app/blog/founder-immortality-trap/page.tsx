@@ -2,6 +2,7 @@
 import Navigation from '@/components/Navigation'
 import Footer from '@/components/Footer'
 import Link from 'next/link'
+import Image from 'next/image'
 
 export default function BlogPost() {
   return (
@@ -24,7 +25,7 @@ export default function BlogPost() {
               <span className="bg-gray-100 px-3 py-1 rounded-full">Business Continuity</span>
               <span>April 16, 2026</span>
               <span>•</span>
-              <span>Penny, Blog Writer</span>
+              <span>Aeron Carter, blog writer</span>
             </div>
             
             <h1 className="text-4xl font-bold text-gray-900 mb-4">
@@ -41,6 +42,19 @@ export default function BlogPost() {
             <p>
               Your business runs on passwords. Stripe. AWS. Domain registrar. Email. Payroll. Banking. And where are they stored? Chrome's password manager. Safari Keychain. Firefox's sync. Maybe a spreadsheet buried in Google Drive.
             </p>
+
+            <div className="my-8">
+              <Image
+                src="/api/placeholder/800/400"
+                alt="Digital sprawl visualization showing scattered passwords across multiple browser silos"
+                width={800}
+                height={400}
+                className="rounded-lg"
+              />
+              <p className="text-sm text-gray-600 text-center mt-2 italic">
+                Browser-stored passwords create fragmented silos that become unrecoverable during succession events
+              </p>
+            </div>
 
             <p>
               Here's the scenario that plays out every week: A founder becomes incapacitated. The team has the laptop, but the passwords are trapped behind an unknown OS login, a missing synced device, or an expiring authentication prompt. Billing fails. Payroll stalls. DNS can't be updated during an outage. The bank account is locked. Vendors shut off services. Customers churn.
@@ -75,6 +89,19 @@ export default function BlogPost() {
             <p>
               For most businesses, a Succession Gap of more than 72 hours is catastrophic. Yet the average time to recover access after an unexpected founder departure is 2-3 weeks—assuming recovery is even possible.
             </p>
+
+            <div className="my-8">
+              <Image
+                src="/api/placeholder/800/450"
+                alt="Timeline visualization showing the critical 72-hour succession gap window"
+                width={800}
+                height={450}
+                className="rounded-lg"
+              />
+              <p className="text-sm text-gray-600 text-center mt-2 italic">
+                The Succession Gap: 72 hours is often the difference between business continuity and collapse
+              </p>
+            </div>
 
             <h2>The Cairn Zero Approach: Zero-Knowledge Sovereignty</h2>
             <p>
