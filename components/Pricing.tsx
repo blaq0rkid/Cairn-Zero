@@ -1,15 +1,15 @@
+
+// File: components/Pricing.tsx
 'use client'
 
 import { STRIPE_PRICES, createCheckoutSession } from '@/lib/stripe'
 
 export default function Pricing() {
   const handleLiteCheckout = async () => {
-    // Setup fee first (one-time payment)
     await createCheckoutSession(STRIPE_PRICES.LITE_SETUP, 'lite', 'payment')
   }
 
   const handleFounderGuardCheckout = async () => {
-    // Setup fee (one-time payment)
     await createCheckoutSession(STRIPE_PRICES.FOUNDER_GUARD_SETUP, 'founder_guard', 'payment')
   }
 
@@ -38,12 +38,10 @@ export default function Pricing() {
               <span className="text-2xl font-bold text-gray-900">$99</span>
               <span className="text-gray-600">/month</span>
             </div>
-            <div className="mb-4 p-3 bg-gray-50 rounded">
-              <p className="text-sm text-gray-700">
-                <strong>Hardware Anchor:</strong> $149 (one-time) — YubiKey/FIDO2 security key + initial setup
+            <div className="mb-6 p-4 bg-gray-50 rounded">
+              <p className="text-sm text-gray-700 mb-2">
+                <strong>Setup Fee:</strong> $149 (one-time) — FIDO2/YubiKey + initial provisioning
               </p>
-            </div>
-            <div className="mb-6 p-3 bg-gray-50 rounded">
               <p className="text-sm text-gray-700">
                 <strong>Vigilance Fee:</strong> $99/month — Zero-knowledge monitoring & succession triggers
               </p>
@@ -51,30 +49,30 @@ export default function Pricing() {
             <ul className="flex flex-col gap-3 mb-8 flex-grow">
               <li className="flex items-start gap-3 text-gray-600">
                 <span className="text-green-600 font-bold">✓</span>
-                <span>Enterprise-grade hardware security key</span>
+                <span>Continuity "Succession Ping" checks</span>
               </li>
               <li className="flex items-start gap-3 text-gray-600">
                 <span className="text-green-600 font-bold">✓</span>
-                <span>Automated succession triggers</span>
+                <span>FIDO2/YubiKey authentication support</span>
               </li>
               <li className="flex items-start gap-3 text-gray-600">
                 <span className="text-green-600 font-bold">✓</span>
-                <span>Zero-knowledge monitoring</span>
+                <span>Digital Sprawl Audit workflow</span>
               </li>
               <li className="flex items-start gap-3 text-gray-600">
                 <span className="text-green-600 font-bold">✓</span>
-                <span>Succession Playbook access</span>
+                <span>Mandatory Silo Consolidation prompts</span>
               </li>
               <li className="flex items-start gap-3 text-gray-600">
                 <span className="text-green-600 font-bold">✓</span>
-                <span>Digital Sprawl Audit tools</span>
+                <span>Zero-knowledge architecture</span>
               </li>
             </ul>
             <button 
               onClick={handleLiteCheckout}
               className="w-full px-6 py-3 bg-gray-900 text-white rounded hover:bg-gray-800 transition-colors"
             >
-              Start with Lite
+              Get Cairn Lite
             </button>
           </div>
           
@@ -90,7 +88,15 @@ export default function Pricing() {
             </div>
             <div className="mb-6">
               <span className="text-2xl font-bold">$149</span>
-              <span className="text-gray-300">/month</span>
+              <span className="text-gray-300">/year</span>
+            </div>
+            <div className="mb-6 p-4 bg-gray-800 rounded">
+              <p className="text-sm text-gray-300 mb-2">
+                <strong>Setup Fee:</strong> $4,999 — Continuity-in-a-Box hardware + setup
+              </p>
+              <p className="text-sm text-gray-300">
+                <strong>Annual Maintenance:</strong> $149/year
+              </p>
             </div>
             <ul className="flex flex-col gap-3 mb-8 flex-grow">
               <li className="flex items-start gap-3">
@@ -99,11 +105,11 @@ export default function Pricing() {
               </li>
               <li className="flex items-start gap-3">
                 <span className="text-green-400 font-bold">✓</span>
-                <span>Continuity-in-a-Box: Apricorn Aegis Secure Key 3NX</span>
+                <span>Apricorn Aegis Secure Key 3NX hardware</span>
               </li>
               <li className="flex items-start gap-3">
                 <span className="text-green-400 font-bold">✓</span>
-                <span>Unique etched Cairn ID (CZ-XXXX format)</span>
+                <span>Etched Cairn ID (CZ-XXXX format)</span>
               </li>
               <li className="flex items-start gap-3">
                 <span className="text-green-400 font-bold">✓</span>
@@ -115,28 +121,35 @@ export default function Pricing() {
               </li>
               <li className="flex items-start gap-3">
                 <span className="text-green-400 font-bold">✓</span>
-                <span>Physical sovereignty and offline redundancy</span>
+                <span>Physical sovereignty via PIN-pad device</span>
               </li>
               <li className="flex items-start gap-3">
                 <span className="text-green-400 font-bold">✓</span>
-                <span>Secondary backup hardware included</span>
+                <span>Active/Archive dual-key protocol</span>
               </li>
             </ul>
             <button 
               onClick={handleFounderGuardCheckout}
               className="w-full px-6 py-3 bg-white text-gray-900 rounded hover:bg-gray-100 transition-colors font-bold"
             >
-              Secure Founder Guard
+              Get Founder Guard
             </button>
           </div>
           
           {/* Legacy Certainty */}
           <div className="bg-white p-8 rounded-lg border border-gray-200 flex flex-col">
             <h3 className="text-2xl font-bold text-gray-900 mb-4">Legacy Certainty</h3>
-            <div className="mb-6">
-              <span className="text-4xl font-bold text-gray-900">Custom</span>
+            <div className="mb-2">
+              <span className="text-4xl font-bold text-gray-900">$14,999</span>
+              <span className="text-gray-600"> one-time</span>
             </div>
-            <p className="text-gray-600 mb-6">Contact for pricing starting at $14,999 setup + $499/month</p>
+            <div className="mb-6">
+              <span className="text-2xl font-bold text-gray-900">$499</span>
+              <span className="text-gray-600">/month</span>
+            </div>
+            <p className="text-sm text-gray-600 mb-6 p-4 bg-gray-50 rounded">
+              Concierge continuity for high-stakes professionals. Contact for custom quote.
+            </p>
             <ul className="flex flex-col gap-3 mb-8 flex-grow">
               <li className="flex items-start gap-3 text-gray-600">
                 <span className="text-green-600 font-bold">✓</span>
@@ -144,36 +157,36 @@ export default function Pricing() {
               </li>
               <li className="flex items-start gap-3 text-gray-600">
                 <span className="text-green-600 font-bold">✓</span>
-                <span>Multi-founder succession planning</span>
+                <span>Bespoke succession logic design</span>
               </li>
               <li className="flex items-start gap-3 text-gray-600">
                 <span className="text-green-600 font-bold">✓</span>
-                <span>Complex succession logic & hierarchies</span>
+                <span>Multi-successor sequencing</span>
               </li>
               <li className="flex items-start gap-3 text-gray-600">
                 <span className="text-green-600 font-bold">✓</span>
-                <span>Institutional-grade security protocols</span>
+                <span>Premium hardware package (3 keys)</span>
               </li>
               <li className="flex items-start gap-3 text-gray-600">
                 <span className="text-green-600 font-bold">✓</span>
-                <span>Custom integration with existing systems</span>
+                <span>50-year durability guarantee</span>
               </li>
               <li className="flex items-start gap-3 text-gray-600">
                 <span className="text-green-600 font-bold">✓</span>
-                <span>Dedicated support and onboarding</span>
+                <span>White-glove onboarding</span>
               </li>
             </ul>
             <button 
               onClick={handleLegacyCertaintyContact}
               className="w-full px-6 py-3 bg-gray-900 text-white rounded hover:bg-gray-800 transition-colors"
             >
-              Contact Sales
+              Contact Us
             </button>
           </div>
         </div>
         <div className="mt-8 text-center">
           <p className="text-sm text-gray-600">
-            <strong>Transparency Guarantee:</strong> No hidden fees. Month-to-month billing. Cancel anytime.
+            <strong>Transparency Guarantee:</strong> No hidden fees. Month-to-month billing for Cairn Lite. Cancel anytime.
           </p>
         </div>
       </div>
