@@ -1,5 +1,4 @@
 
-// File: lib/stripe.ts
 import { loadStripe } from '@stripe/stripe-js'
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
@@ -29,9 +28,9 @@ export const STRIPE_PRICES = {
   
   // Founder Guard
   FOUNDER_GUARD_SETUP: 'price_1TOMa9Crb0tVxJGIzfFeecvM',    // $4,999 one-time
-  FOUNDER_GUARD_MONTHLY: 'price_1TOMa7Crb0tVxJGINXfU76bj',  // $149/year
+  FOUNDER_GUARD_MONTHLY: 'price_1TOMa7Crb0tVxJGINXfU76bj',  // $149/month
   
-  // Legacy Certainty
+  // Legacy Certainty (Internal use only - Contact Us on website)
   LEGACY_SETUP: 'price_1TOMa9Crb0tVxJGI8qbMhRwf',    // $14,999 one-time
   LEGACY_MONTHLY: 'price_1TOMaBCrb0tVxJGIOHh465bL',  // $499/month
 }
