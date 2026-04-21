@@ -1,12 +1,10 @@
 
-// File: app/succession-playbook/page.tsx
-import Link from 'next/link'
 import Navigation from '@/components/Navigation'
 import Footer from '@/components/Footer'
 
 export default function SuccessionPlaybookPage() {
   return (
-    <div className="min-h-screen bg-white">
+    <>
       <Navigation />
       <div className="pt-24 pb-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto prose prose-gray">
@@ -122,6 +120,6 @@ export default function SuccessionPlaybookPage() {
         </div>
       </div>
       <Footer />
-    </div>
+    </>
   )
 }
