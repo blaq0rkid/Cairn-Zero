@@ -1,52 +1,63 @@
+import Link from 'next/link'
+
 export default function Footer() {
   return (
     <footer className="bg-gray-900 text-white py-12">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid md:grid-cols-3 gap-8 mb-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="grid md:grid-cols-4 gap-8 mb-8">
           <div>
-            <h3 className="text-lg font-bold mb-4">Cairn Zero</h3>
-            <p className="text-gray-400">
-              Closing the Succession Gap through zero-knowledge sovereignty and certainty-only principles.
+            <h3 className="font-bold text-lg mb-4">Cairn Zero</h3>
+            <p className="text-gray-400 text-sm">
+              Close the Succession Gap. Guarantee accessibility for the right people at the right time.
             </p>
           </div>
+          
           <div>
-            <h3 className="text-lg font-bold mb-4">Legal</h3>
-            <ul className="flex flex-col gap-2">
+            <h4 className="font-bold mb-4">Product</h4>
+            <ul className="flex flex-col gap-2 text-gray-400 text-sm">
+              <li><a href="#problem" className="hover:text-white transition-colors">The Problem</a></li>
+              <li><a href="#solution" className="hover:text-white transition-colors">The Solution</a></li>
+              <li><a href="#pricing" className="hover:text-white transition-colors">Pricing</a></li>
+              <li><Link href="/faq" className="hover:text-white transition-colors">FAQ</Link></li>
+              <li><Link href="/blog" className="hover:text-white transition-colors">Blog</Link></li>
+            </ul>
+          </div>
+          
+          <div>
+            <h4 className="font-bold mb-4">Legal</h4>
+            <ul className="flex flex-col gap-2 text-gray-400 text-sm">
+              <li><Link href="/succession-playbook" className="hover:text-white transition-colors">Succession Playbook</Link></li>
+              <li><Link href="/msa" className="hover:text-white transition-colors">Master Services Agreement</Link></li>
+              <li><Link href="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link></li>
+              <li><Link href="/terms" className="hover:text-white transition-colors">Terms of Service</Link></li>
+            </ul>
+          </div>
+          
+          <div>
+            <h4 className="font-bold mb-4">Contact</h4>
+            <ul className="flex flex-col gap-2 text-gray-400 text-sm">
               <li>
-                <a href="/legal/succession-playbook" className="text-gray-400 hover:text-white transition-colors">
-                  Succession Playbook
+                <a href="mailto:hello@mycairnzero.com" className="hover:text-white transition-colors">
+                  hello@mycairnzero.com
                 </a>
               </li>
               <li>
-                <a href="/legal/msa" className="text-gray-400 hover:text-white transition-colors">
-                  Master Services Agreement
+                <a href="mailto:admin@mycairnzero.com" className="hover:text-white transition-colors">
+                  admin@mycairnzero.com
                 </a>
               </li>
               <li>
-                <a href="/legal/privacy" className="text-gray-400 hover:text-white transition-colors">
-                  Privacy Policy
-                </a>
-              </li>
-              <li>
-                <a href="/legal/terms" className="text-gray-400 hover:text-white transition-colors">
-                  Terms of Service
+                <a href="mailto:legal@mycairnzero.com" className="hover:text-white transition-colors">
+                  legal@mycairnzero.com
                 </a>
               </li>
             </ul>
           </div>
-          <div>
-            <h3 className="text-lg font-bold mb-4">Contact</h3>
-            <p className="text-gray-400 mb-2">admin@mycairnzero.com</p>
-            <a 
-              href="/successor" 
-              className="inline-block mt-4 px-4 py-2 bg-amber-600 text-white rounded hover:bg-amber-700 transition-colors"
-            >
-              Successor Portal →
-            </a>
-          </div>
         </div>
-        <div className="border-t border-gray-800 pt-8 text-center text-gray-400">
+        
+        <div className="border-t border-gray-800 pt-8 text-center text-gray-400 text-sm">
           <p>&copy; 2026 Cairn Zero. All rights reserved.</p>
+          <p className="mt-2">Zero-Knowledge Sovereignty | Certainty-Only Principle | Physical Sovereignty</p>
         </div>
       </div>
     </footer>
