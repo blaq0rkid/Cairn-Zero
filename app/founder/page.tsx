@@ -14,6 +14,14 @@ export default function FounderDashboard() {
   const [cairnId, setCairnId] = useState('')
   const [successors, setSuccessors] = useState<any[]>([])
   const [pingFrequency, setPingFrequency] = useState('weekly')
+  const [gracePeriod, setGracePeriod] = useState(7)
+  const [retreatWindow, setRetreatWindow] = useState(24)
+  const [showSeparationModal, setShowSeparationModal] = useState(false)
+  const [separationCertified, setSeparationCertified] = useState(false)
+  const [fiduciaryStatus, setFiduciaryStatus] = useState('pending')
+  const [hardwareReceived, setHardwareReceived] = useState(false)
+  const [separationDeadline, setSeparationDeadline] = useState<Date | null>(null)
+  const [showDryRunModal, setShowDryRunModal] = useState(false)
   
   const router = useRouter()
   const supabase = createClientComponentClient()
@@ -23,7 +31,6 @@ export default function FounderDashboard() {
       const { data: { session } } = await supabase.auth.getSession()
       if (session?.user) {
         setUser(session.user)
-        // Load user's Cairn configuration
         loadCairnData(session.user.id)
       }
       setLoading(false)
@@ -38,6 +45,12 @@ export default function FounderDashboard() {
     setSuccessors([
       { id: 1, name: 'John Doe', email: 'john@example.com', order: 1, status: 'active' },
     ])
+    
+    // Simulate hardware received - triggers 7-day countdown
+    setHardwareReceived(true)
+    const deadline = new Date()
+    deadline.setDate(deadline.getDate() + 7)
+    setSeparationDeadline(deadline)
   }
 
   const handleSignOut = async () => {
@@ -55,6 +68,30 @@ export default function FounderDashboard() {
     }
     setSuccessors([...successors, newSuccessor])
   }
+
+  const handleCertifySeparation = () => {
+    setSeparationCertified(true)
+    setShowSeparationModal(false)
+    setFiduciaryStatus('active')
+    // TODO: Record digital attestation in Supabase with immutable log
+  }
+
+  const handleDryRunConfirm = () => {
+    setShowDryRunModal(false)
+    // TODO: Execute simulation logic per Section 9.3
+    alert('SIMULATED: Succession test initiated. Check your email for test notifications.')
+  }
+
+  const calculateTimeRemaining = () => {
+    if (!separationDeadline) return null
+    const now = new Date()
+    const diff = separationDeadline.getTime() - now.getTime()
+    const hours = Math.floor(diff / (1000 * 60 * 60))
+    return hours
+  }
+
+  const timeRemaining = calculateTimeRemaining()
+  const showUrgentWarning = timeRemaining !== null && timeRemaining <= 24
 
   if (loading) {
     return (
@@ -75,6 +112,51 @@ export default function FounderDashboard() {
       <Navigation />
       <div className="pt-24 pb-20 px-4 sm:px-6 lg:px-8 bg-gray-50 min-h-screen">
         <div className="max-w-7xl mx-auto">
+          {/* Geographic Separation Warning (Section 2) */}
+          {hardwareReceived && !separationCertified && (
+            <div className={`mb-6 p-6 rounded-lg border-2 ${
+              showUrgentWarning 
+                ? 'bg-red-50 border-red-500' 
+                : 'bg-yellow-50 border-yellow-500'
+            }`}>
+              <div className="flex items-start gap-4">
+                <svg className="w-6 h-6 text-red-600 flex-shrink-0 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <div className="flex-1">
+                  <h3 className="font-bold text-gray-900 mb-2">
+                    {showUrgentWarning ? 'URGENT: ' : ''}7-Day Geographic Separation Required
+                  </h3>
+                  <p className="text-gray-700 mb-2">
+                    Your hardware keys have been delivered. You have <strong>{timeRemaining} hours remaining</strong> to certify that your Archive key has been physically separated from your Active key.
+                  </p>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Failure to certify separation will void your Fiduciary Safe Harbor protections and set your account to "At Risk / Non-Compliant."
+                  </p>
+                  <button
+                    onClick={() => setShowSeparationModal(true)}
+                    className="bg-gray-900 text-white px-6 py-2 rounded-lg font-semibold hover:bg-gray-800 transition-colors"
+                  >
+                    Certify Separation Now
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Fiduciary Safe Harbor Status (Section 6) */}
+          {fiduciaryStatus !== 'active' && separationCertified && (
+            <div className="mb-6 p-6 bg-red-50 border-2 border-red-500 rounded-lg">
+              <div className="flex items-center gap-3">
+                <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                <div>
+                  <h3 className="font-semibold text-red-900">Fiduciary Safe Harbor: VOID</h3>
+                  <p className="text-sm text-red-800">Your Succession Guarantee is currently inactive. Complete all requirements to activate Safe Harbor protections.</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Header */}
           <div className="flex justify-between items-center mb-8">
             <div>
@@ -139,7 +221,22 @@ export default function FounderDashboard() {
           {activeTab === 'overview' && (
             <div className="flex flex-col gap-6">
               {/* Status Cards */}
-              <div className="grid md:grid-cols-3 gap-6">
+              <div className="grid md:grid-cols-4 gap-6">
+                <div className="bg-white border border-gray-200 rounded-lg p-6">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className={`w-2 h-2 rounded-full ${
+                      fiduciaryStatus === 'active' ? 'bg-green-500' : 'bg-red-500'
+                    }`}></div>
+                    <h3 className="font-semibold text-gray-900">Safe Harbor</h3>
+                  </div>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {fiduciaryStatus === 'active' ? 'Active' : 'Void'}
+                  </p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {fiduciaryStatus === 'active' ? 'Protected' : 'Non-Compliant'}
+                  </p>
+                </div>
+
                 <div className="bg-white border border-gray-200 rounded-lg p-6">
                   <div className="flex items-center gap-3 mb-2">
                     <div className="w-2 h-2 bg-green-500 rounded-full"></div>
@@ -158,7 +255,7 @@ export default function FounderDashboard() {
                 <div className="bg-white border border-gray-200 rounded-lg p-6">
                   <h3 className="font-semibold text-gray-900 mb-2">Successors</h3>
                   <p className="text-2xl font-bold text-gray-900">{successors.length}</p>
-                  <p className="text-sm text-gray-600 mt-1">Designated recipients</p>
+                  <p className="text-sm text-gray-600 mt-1">Sequential queue</p>
                 </div>
               </div>
 
@@ -198,8 +295,8 @@ export default function FounderDashboard() {
             <div className="bg-white border border-gray-200 rounded-lg p-6">
               <div className="flex justify-between items-center mb-6">
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900">Succession Chain</h2>
-                  <p className="text-gray-600 mt-1">Configure your sequential handoff protocol</p>
+                  <h2 className="text-xl font-bold text-gray-900">Sequential Succession Chain</h2>
+                  <p className="text-gray-600 mt-1">Configure your sequential handoff protocol (Section 3.1)</p>
                 </div>
                 <button
                   onClick={addSuccessor}
@@ -207,6 +304,13 @@ export default function FounderDashboard() {
                 >
                   Add Successor
                 </button>
+              </div>
+
+              <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h3 className="font-semibold text-blue-900 mb-2">Sequential Access Logic (Anti-Succession War Protocol)</h3>
+                <p className="text-sm text-blue-800">
+                  Successors can ONLY access the vault in sequential order. Successor 2 cannot be activated unless Successor 1 fails to respond within the grace period OR you explicitly deactivate Successor 1.
+                </p>
               </div>
 
               <div className="flex flex-col gap-4">
@@ -243,10 +347,9 @@ export default function FounderDashboard() {
               </div>
 
               <div className="mt-6 bg-gray-50 border border-gray-200 rounded-lg p-4">
-                <h3 className="font-semibold text-gray-900 mb-2">Sequential Handoff Logic</h3>
+                <h3 className="font-semibold text-gray-900 mb-2">Grace Period (Default: 7 Days)</h3>
                 <p className="text-sm text-gray-600">
-                  Access will be granted to Successor 1 first. If Successor 1 does not acknowledge within the grace period, 
-                  Successor 2 will be notified automatically.
+                  When a triggering event occurs, Successor 1 has 7 days to complete Digital Attestation. If they fail to respond, Successor 2 is automatically notified.
                 </p>
               </div>
             </div>
@@ -255,12 +358,12 @@ export default function FounderDashboard() {
           {/* Triggers Tab */}
           {activeTab === 'triggers' && (
             <div className="bg-white border border-gray-200 rounded-lg p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-6">Continuity Triggers</h2>
+              <h2 className="text-xl font-bold text-gray-900 mb-6">Continuity Triggers & Heartbeat Configuration</h2>
               
               <div className="flex flex-col gap-6">
                 <div>
                   <label className="block font-semibold text-gray-900 mb-2">
-                    Ping Frequency
+                    Ping Frequency (Section 4.1)
                   </label>
                   <select
                     value={pingFrequency}
@@ -283,7 +386,8 @@ export default function FounderDashboard() {
                   </label>
                   <input
                     type="number"
-                    defaultValue={7}
+                    value={gracePeriod}
+                    onChange={(e) => setGracePeriod(parseInt(e.target.value))}
                     min={1}
                     max={30}
                     className="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-lg"
@@ -299,7 +403,8 @@ export default function FounderDashboard() {
                   </label>
                   <input
                     type="number"
-                    defaultValue={24}
+                    value={retreatWindow}
+                    onChange={(e) => setRetreatWindow(parseInt(e.target.value))}
                     min={1}
                     max={72}
                     className="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-lg"
@@ -314,13 +419,22 @@ export default function FounderDashboard() {
                 </button>
               </div>
 
-              <div className="mt-8 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <h3 className="font-semibold text-yellow-900 mb-2">Test Your Succession Plan</h3>
+              {/* Dry Run / Succession Simulation (Section 9) */}
+              <div className="mt-8 bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+                <h3 className="font-semibold text-yellow-900 mb-2 flex items-center gap-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Test Your Succession Plan (Dry Run)
+                </h3>
                 <p className="text-sm text-yellow-800 mb-4">
-                  Run a dry-run simulation to ensure your successors receive the correct alerts and can access the Successor Portal.
+                  Run a non-destructive simulation to validate that your succession configuration will function as intended. This will test notifications, access eligibility logic, and workflow gating WITHOUT releasing any decryption authority.
                 </p>
-                <button className="border border-yellow-900 text-yellow-900 px-4 py-2 rounded-lg font-semibold hover:bg-yellow-900 hover:text-white transition-colors">
-                  Run Dry Run
+                <button 
+                  onClick={() => setShowDryRunModal(true)}
+                  className="border-2 border-yellow-900 text-yellow-900 px-4 py-2 rounded-lg font-semibold hover:bg-yellow-900 hover:text-white transition-colors"
+                >
+                  Simulate Succession Event
                 </button>
               </div>
             </div>
@@ -393,6 +507,90 @@ export default function FounderDashboard() {
           )}
         </div>
       </div>
+
+      {/* Geographic Separation Certification Modal (Section 2.2) */}
+      {showSeparationModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full p-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Certification of Geographic Separation</h2>
+            <p className="text-gray-700 mb-6">
+              To activate your Fiduciary Safe Harbor protections, you must certify under penalty of contract voidance that your Archive key has been physically separated from your Active key.
+            </p>
+            
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
+              <label className="flex items-start gap-3">
+                <input type="checkbox" className="w-5 h-5 mt-1" required />
+                <span className="text-sm text-gray-900">
+                  <strong>I certify under penalty of contract voidance that:</strong> My Archive key (Key B) has been physically handed to my designated successor or legal counsel and is no longer stored at my primary place of business. I understand that both keys must not be stored in the same building to maintain the Certainty Guarantee.
+                </span>
+              </label>
+            </div>
+
+            <div className="flex gap-4">
+              <button
+                onClick={handleCertifySeparation}
+                className="flex-1 bg-gray-900 text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-800 transition-colors"
+              >
+                Digitally Sign & Certify
+              </button>
+              <button
+                onClick={() => setShowSeparationModal(false)}
+                className="flex-1 border border-gray-300 text-gray-700 px-6 py-3 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Dry Run Confirmation Modal (Section 9.2) */}
+      {showDryRunModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full p-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Confirm Succession Simulation</h2>
+            <p className="text-gray-700 mb-6">
+              You are about to initiate a <strong>SIMULATED</strong> succession event for testing purposes only.
+            </p>
+            
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+              <h3 className="font-semibold text-yellow-900 mb-2">What This Simulation Will Do:</h3>
+              <ul className="list-disc list-inside text-sm text-yellow-800 space-y-1">
+                <li>Test notification delivery to all designated successors</li>
+                <li>Validate access eligibility logic and sequential handoff protocols</li>
+                <li>Verify decryption workflow gating (using mock data only)</li>
+                <li>All messages will be clearly labeled "SIMULATED"</li>
+              </ul>
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+              <h3 className="font-semibold text-blue-900 mb-2">What This Simulation Will NOT Do:</h3>
+              <ul className="list-disc list-inside text-sm text-blue-800 space-y-1">
+                <li>Release, transmit, or transfer any actual decryption keys</li>
+                <li>Expose vault contents or unencrypted data to anyone</li>
+                <li>Trigger any irreversible on-chain actions</li>
+                <li>Count as evidence of an actual succession event</li>
+              </ul>
+            </div>
+
+            <div className="flex gap-4">
+              <button
+                onClick={handleDryRunConfirm}
+                className="flex-1 bg-gray-900 text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-800 transition-colors"
+              >
+                Confirm & Run Simulation
+              </button>
+              <button
+                onClick={() => setShowDryRunModal(false)}
+                className="flex-1 border border-gray-300 text-gray-700 px-6 py-3 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Footer />
     </>
   )
