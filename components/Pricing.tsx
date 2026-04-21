@@ -1,6 +1,21 @@
+'use client'
 
-// File: components/Pricing.tsx
+import { STRIPE_PRICES, createCheckoutSession } from '@/lib/stripe'
+
 export default function Pricing() {
+  const handleLiteCheckout = async () => {
+    // First charge setup fee, then subscription
+    await createCheckoutSession(STRIPE_PRICES.LITE_SETUP, 'lite_setup')
+  }
+
+  const handleFounderGuardCheckout = async () => {
+    await createCheckoutSession(STRIPE_PRICES.FOUNDER_GUARD, 'founder_guard')
+  }
+
+  const handleEnterpriseContact = () => {
+    window.location.href = 'mailto:admin@mycairnzero.com?subject=Enterprise Inquiry'
+  }
+
   return (
     <section id="pricing" className="py-20 bg-gray-50">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -53,7 +68,10 @@ export default function Pricing() {
                 <span>Digital Sprawl Audit tools</span>
               </li>
             </ul>
-            <button className="w-full px-6 py-3 bg-gray-900 text-white rounded hover:bg-gray-800 transition-colors">
+            <button 
+              onClick={handleLiteCheckout}
+              className="w-full px-6 py-3 bg-gray-900 text-white rounded hover:bg-gray-800 transition-colors"
+            >
               Start with Lite
             </button>
           </div>
@@ -101,7 +119,10 @@ export default function Pricing() {
                 <span>Secondary backup hardware included</span>
               </li>
             </ul>
-            <button className="w-full px-6 py-3 bg-white text-gray-900 rounded hover:bg-gray-100 transition-colors font-bold">
+            <button 
+              onClick={handleFounderGuardCheckout}
+              className="w-full px-6 py-3 bg-white text-gray-900 rounded hover:bg-gray-100 transition-colors font-bold"
+            >
               Secure Founder Guard
             </button>
           </div>
@@ -137,7 +158,10 @@ export default function Pricing() {
                 <span>Dedicated support and onboarding</span>
               </li>
             </ul>
-            <button className="w-full px-6 py-3 bg-gray-900 text-white rounded hover:bg-gray-800 transition-colors">
+            <button 
+              onClick={handleEnterpriseContact}
+              className="w-full px-6 py-3 bg-gray-900 text-white rounded hover:bg-gray-800 transition-colors"
+            >
               Contact Sales
             </button>
           </div>
