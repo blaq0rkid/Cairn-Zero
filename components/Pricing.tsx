@@ -4,16 +4,17 @@ import { STRIPE_PRICES, createCheckoutSession } from '@/lib/stripe'
 
 export default function Pricing() {
   const handleLiteCheckout = async () => {
-    // First charge setup fee, then subscription
-    await createCheckoutSession(STRIPE_PRICES.LITE_SETUP, 'lite_setup')
+    // Setup fee first (one-time payment)
+    await createCheckoutSession(STRIPE_PRICES.LITE_SETUP, 'lite', 'payment')
   }
 
   const handleFounderGuardCheckout = async () => {
-    await createCheckoutSession(STRIPE_PRICES.FOUNDER_GUARD, 'founder_guard')
+    // Setup fee (one-time payment)
+    await createCheckoutSession(STRIPE_PRICES.FOUNDER_GUARD_SETUP, 'founder_guard', 'payment')
   }
 
-  const handleEnterpriseContact = () => {
-    window.location.href = 'mailto:admin@mycairnzero.com?subject=Enterprise Inquiry'
+  const handleLegacyCertaintyContact = () => {
+    window.location.href = 'mailto:admin@mycairnzero.com?subject=Legacy Certainty Inquiry'
   }
 
   return (
@@ -26,6 +27,7 @@ export default function Pricing() {
           Transparent pricing with the "Hardware + Vigilance" model. No hidden fees.
         </p>
         <div className="grid md:grid-cols-3 gap-8">
+          {/* Cairn Lite */}
           <div className="bg-white p-8 rounded-lg border border-gray-200 flex flex-col">
             <h3 className="text-2xl font-bold text-gray-900 mb-4">Cairn Lite</h3>
             <div className="mb-2">
@@ -76,6 +78,7 @@ export default function Pricing() {
             </button>
           </div>
           
+          {/* Founder Guard */}
           <div className="bg-gray-900 text-white p-8 rounded-lg border-4 border-gray-900 flex flex-col relative">
             <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-amber-500 text-gray-900 px-4 py-1 rounded-full text-sm font-bold">
               FLAGSHIP
@@ -127,11 +130,13 @@ export default function Pricing() {
             </button>
           </div>
           
+          {/* Legacy Certainty */}
           <div className="bg-white p-8 rounded-lg border border-gray-200 flex flex-col">
-            <h3 className="text-2xl font-bold text-gray-900 mb-4">Cairn Enterprise</h3>
+            <h3 className="text-2xl font-bold text-gray-900 mb-4">Legacy Certainty</h3>
             <div className="mb-6">
               <span className="text-4xl font-bold text-gray-900">Custom</span>
             </div>
+            <p className="text-gray-600 mb-6">Contact for pricing starting at $14,999 setup + $499/month</p>
             <ul className="flex flex-col gap-3 mb-8 flex-grow">
               <li className="flex items-start gap-3 text-gray-600">
                 <span className="text-green-600 font-bold">✓</span>
@@ -159,7 +164,7 @@ export default function Pricing() {
               </li>
             </ul>
             <button 
-              onClick={handleEnterpriseContact}
+              onClick={handleLegacyCertaintyContact}
               className="w-full px-6 py-3 bg-gray-900 text-white rounded hover:bg-gray-800 transition-colors"
             >
               Contact Sales
