@@ -1,29 +1,47 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import type { CairnDevice } from '@/lib/supabase'
 
 export default function FounderDashboard() {
   const [cairnId, setCairnId] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<any>(null)
   const [devices, setDevices] = useState<CairnDevice[]>([])
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const router = useRouter()
 
   useEffect(() => {
     checkUser()
-    loadDevices()
   }, [])
 
+  useEffect(() => {
+    if (user) {
+      loadDevices()
+    }
+  }, [user])
+
   async function checkUser() {
-    const { data: { user } } = await supabase.auth.getUser()
-    setUser(user)
-    if (!user) {
-      // Redirect to login or show auth UI
-      setError('Please sign in to access the founder dashboard')
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession()
+      
+      if (error) throw error
+      
+      if (!session) {
+        router.push('/login?redirectTo=/founder')
+        return
+      }
+      
+      setUser(session.user)
+    } catch (err: any) {
+      console.error('Auth error:', err)
+      router.push('/login?redirectTo=/founder')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -77,15 +95,21 @@ export default function FounderDashboard() {
     }
   }
 
-  if (!user) {
+  async function handleSignOut() {
+    await supabase.auth.signOut()
+    router.push('/')
+  }
+
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-white p-8 rounded-lg border border-gray-200">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Authentication Required</h2>
-          <p className="text-gray-600">Please sign in to access the Founder Dashboard.</p>
-        </div>
+        <div className="text-gray-600">Loading...</div>
       </div>
     )
+  }
+
+  if (!user) {
+    return null
   }
 
   return (
@@ -97,9 +121,9 @@ export default function FounderDashboard() {
               Cairn Zero
             </Link>
             <div className="flex items-center gap-4">
-              <span className="text-gray-600">Founder Dashboard</span>
+              <span className="text-gray-600">{user.email}</span>
               <button
-                onClick={() => supabase.auth.signOut()}
+                onClick={handleSignOut}
                 className="text-sm text-gray-600 hover:text-gray-900"
               >
                 Sign Out
