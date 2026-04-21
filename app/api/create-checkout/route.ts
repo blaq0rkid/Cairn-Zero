@@ -2,15 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2023-10-16',
+  apiVersion: '2024-11-20.acacia',
 })
 
 export async function POST(req: NextRequest) {
   try {
-    const { priceId, tier } = await req.json()
+    const { priceId, tier, mode } = await req.json()
 
     const session = await stripe.checkout.sessions.create({
-      mode: tier === 'lite' || tier === 'founder_guard_monthly' ? 'subscription' : 'payment',
+      mode: mode,
       payment_method_types: ['card'],
       line_items: [
         {
@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
           quantity: 1,
         },
       ],
-      success_url: `${req.headers.get('origin')}/founder?success=true`,
+      success_url: `${req.headers.get('origin')}/founder?success=true&tier=${tier}`,
       cancel_url: `${req.headers.get('origin')}/#pricing`,
       metadata: {
         tier,
