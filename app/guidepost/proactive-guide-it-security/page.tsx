@@ -1,3 +1,4 @@
+
 import Navigation from '@/components/Navigation'
 import Footer from '@/components/Footer'
 import Link from 'next/link'
@@ -9,11 +10,11 @@ export default function BlogPost() {
       <Navigation />
       <article className="pt-24 pb-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-3xl mx-auto">
-          <Link href="/blog" className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-8">
+          <Link href="/guidepost" className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-8">
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-            Back to Blog
+            Back to The Guidepost
           </Link>
 
           <div className="mb-8">
@@ -21,7 +22,7 @@ export default function BlogPost() {
               <span className="bg-gray-100 px-3 py-1 rounded-full">Security</span>
               <span>April 12, 2026</span>
               <span>•</span>
-              <span>Aeron Carter, blog writer</span>
+              <span>Aeron Carter, Certainty Strategist</span>
             </div>
             
             <h1 className="text-4xl font-bold text-gray-900 mb-4">
@@ -52,11 +53,12 @@ export default function BlogPost() {
 
             <div className="my-8">
               <Image
-                src="/api/placeholder/800/400"
+                src="https://cdn.marblism.com/d-vfzMa3XDo.webp"
                 alt="Reactive vs proactive security timeline comparison"
                 width={800}
                 height={400}
                 className="rounded-lg"
+                unoptimized
               />
               <p className="text-sm text-gray-600 text-center mt-2 italic">
                 Proactive security plans for continuity before disruption occurs
@@ -90,11 +92,12 @@ export default function BlogPost() {
 
             <div className="my-8">
               <Image
-                src="/api/placeholder/800/450"
+                src="https://cdn.marblism.com/Bt2T28KakGx.webp"
                 alt="Proactive security layers showing multiple redundancy points"
                 width={800}
                 height={450}
                 className="rounded-lg"
+                unoptimized
               />
               <p className="text-sm text-gray-600 text-center mt-2 italic">
                 Layered proactive security creates multiple fallback points before failure occurs
@@ -125,6 +128,20 @@ export default function BlogPost() {
               <li><strong>Testing Protocol:</strong> Schedule regular succession simulations to validate procedures</li>
               <li><strong>Hardware Sovereignty:</strong> Implement physical keys that transfer authority without cloud dependency</li>
             </ol>
+
+            <div className="my-8">
+              <Image
+                src="https://cdn.marblism.com/KZMq7eNBn1b.webp"
+                alt="Proactive security implementation roadmap"
+                width={800}
+                height={450}
+                className="rounded-lg"
+                unoptimized
+              />
+              <p className="text-sm text-gray-600 text-center mt-2 italic">
+                Step-by-step implementation ensures comprehensive proactive security coverage
+              </p>
+            </div>
 
             <h2>The Fiduciary Advantage</h2>
             <p>
