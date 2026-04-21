@@ -1,5 +1,4 @@
 
-// app/guidepost/page.tsx - Updated Blog Index to "The Guidepost"
 import Navigation from '@/components/Navigation'
 import Footer from '@/components/Footer'
 import Link from 'next/link'
@@ -15,7 +14,7 @@ export default function GuidepositPage() {
       author: "Aeron Carter, blog writer",
       category: "Business Continuity",
       slug: "founder-immortality-trap",
-      thumbnail: "/api/placeholder/400/250"
+      thumbnail: "https://placehold.co/400x250/e5e7eb/1f2937?text=Founder+Immortality+Trap"
     },
     {
       id: 2,
@@ -25,7 +24,7 @@ export default function GuidepositPage() {
       author: "Aeron Carter, blog writer",
       category: "Business Continuity",
       slug: "legacy-certainty-ultimate-continuity",
-      thumbnail: "/api/placeholder/400/250"
+      thumbnail: "https://placehold.co/400x250/e5e7eb/1f2937?text=Legacy+Certainty"
     },
     {
       id: 3,
@@ -35,7 +34,7 @@ export default function GuidepositPage() {
       author: "Aeron Carter, blog writer",
       category: "Security",
       slug: "7-mistakes-cybersecurity",
-      thumbnail: "/api/placeholder/400/250"
+      thumbnail: "https://placehold.co/400x250/e5e7eb/1f2937?text=7+Cybersecurity+Mistakes"
     },
     {
       id: 4,
@@ -45,7 +44,7 @@ export default function GuidepositPage() {
       author: "Aeron Carter, blog writer",
       category: "Identity Security",
       slug: "founder-identity-ai-deepfakes",
-      thumbnail: "/api/placeholder/400/250"
+      thumbnail: "https://placehold.co/400x250/e5e7eb/1f2937?text=AI+Deepfakes"
     },
     {
       id: 5,
@@ -55,7 +54,7 @@ export default function GuidepositPage() {
       author: "Aeron Carter, blog writer",
       category: "Security",
       slug: "founders-guide-endpoint-security",
-      thumbnail: "/api/placeholder/400/250"
+      thumbnail: "https://placehold.co/400x250/e5e7eb/1f2937?text=Endpoint+Security"
     },
     {
       id: 6,
@@ -65,7 +64,7 @@ export default function GuidepositPage() {
       author: "Aeron Carter, blog writer",
       category: "Security",
       slug: "proactive-guide-it-security",
-      thumbnail: "/api/placeholder/400/250"
+      thumbnail: "https://placehold.co/400x250/e5e7eb/1f2937?text=Proactive+Security"
     },
     {
       id: 7,
@@ -75,7 +74,7 @@ export default function GuidepositPage() {
       author: "Aeron Carter, blog writer",
       category: "Company Updates",
       slug: "website-branding-sovereignty-updates",
-      thumbnail: "/api/placeholder/400/250"
+      thumbnail: "https://placehold.co/400x250/e5e7eb/1f2937?text=Branding+Updates"
     },
     {
       id: 8,
@@ -85,7 +84,7 @@ export default function GuidepositPage() {
       author: "Aeron Carter, blog writer",
       category: "Security",
       slug: "ultimate-guide-it-security",
-      thumbnail: "/api/placeholder/400/250"
+      thumbnail: "https://placehold.co/400x250/e5e7eb/1f2937?text=Ultimate+IT+Security"
     },
     {
       id: 9,
@@ -95,7 +94,7 @@ export default function GuidepositPage() {
       author: "Aeron Carter, blog writer",
       category: "Asset Protection",
       slug: "business-asset-protection-security-secrets",
-      thumbnail: "/api/placeholder/400/250"
+      thumbnail: "https://placehold.co/400x250/e5e7eb/1f2937?text=Asset+Protection"
     },
     {
       id: 10,
@@ -105,7 +104,7 @@ export default function GuidepositPage() {
       author: "Aeron Carter, blog writer",
       category: "Business Continuity",
       slug: "10-reasons-protection-plan-will-fail",
-      thumbnail: "/api/placeholder/400/250"
+      thumbnail: "https://placehold.co/400x250/e5e7eb/1f2937?text=10+Reasons+Plans+Fail"
     },
     {
       id: 11,
@@ -115,7 +114,7 @@ export default function GuidepositPage() {
       author: "Aeron Carter, blog writer",
       category: "Security",
       slug: "stop-wasting-time-managed-security",
-      thumbnail: "/api/placeholder/400/250"
+      thumbnail: "https://placehold.co/400x250/e5e7eb/1f2937?text=Simple+Sovereignty"
     }
   ]
 
@@ -136,6 +135,7 @@ export default function GuidepositPage() {
                   width={400}
                   height={250}
                   className="w-full h-64 object-cover"
+                  unoptimized
                 />
                 <div className="p-8">
                   <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
