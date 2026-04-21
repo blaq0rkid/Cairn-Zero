@@ -1,5 +1,4 @@
 
-// File: app/api/create-checkout/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 
@@ -20,15 +19,18 @@ export async function POST(req: NextRequest) {
           quantity: 1,
         },
       ],
-      success_url: `${req.headers.get('origin')}/founder?success=true&tier=${tier}`,
+      success_url: `${req.headers.get('origin')}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${req.headers.get('origin')}/#pricing`,
       metadata: {
-        tier,
+        tier: tier,
       },
     })
 
     return NextResponse.json({ id: session.id })
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 })
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error.message },
+      { status: 500 }
+    )
   }
 }
