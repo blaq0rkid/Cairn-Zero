@@ -1,4 +1,3 @@
-// File: app/page.tsx - Update to include new sections
 import Navigation from '@/components/Navigation'
 import Hero from '@/components/Hero'
 import ProblemSection from '@/components/ProblemSection'
