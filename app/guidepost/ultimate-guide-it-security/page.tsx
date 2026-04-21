@@ -1,3 +1,4 @@
+
 import Navigation from '@/components/Navigation'
 import Footer from '@/components/Footer'
 import Link from 'next/link'
@@ -9,11 +10,11 @@ export default function BlogPost() {
       <Navigation />
       <article className="pt-24 pb-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-3xl mx-auto">
-          <Link href="/blog" className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-8">
+          <Link href="/guidepost" className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-8">
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-            Back to Blog
+            Back to The Guidepost
           </Link>
 
           <div className="mb-8">
@@ -21,7 +22,7 @@ export default function BlogPost() {
               <span className="bg-gray-100 px-3 py-1 rounded-full">Security</span>
               <span>April 10, 2026</span>
               <span>•</span>
-              <span>Aeron Carter, blog writer</span>
+              <span>Aeron Carter, Certainty Strategist</span>
             </div>
             
             <h1 className="text-4xl font-bold text-gray-900 mb-4">
@@ -45,11 +46,12 @@ export default function BlogPost() {
 
             <div className="my-8">
               <Image
-                src="/api/placeholder/800/400"
+                src="https://cdn.marblism.com/H_O6LIJb092.webp"
                 alt="Security vs accessibility tradeoff diagram"
                 width={800}
                 height={400}
                 className="rounded-lg"
+                unoptimized
               />
               <p className="text-sm text-gray-600 text-center mt-2 italic">
                 Traditional security creates a tradeoff between protection and succession accessibility
@@ -93,11 +95,12 @@ export default function BlogPost() {
 
             <div className="my-8">
               <Image
-                src="/api/placeholder/800/450"
+                src="https://cdn.marblism.com/D3ZCjn_-PZY.webp"
                 alt="Multi-factor authentication succession challenges"
                 width={800}
                 height={450}
                 className="rounded-lg"
+                unoptimized
               />
               <p className="text-sm text-gray-600 text-center mt-2 italic">
                 MFA layers must include succession-compatible authentication methods
@@ -128,6 +131,20 @@ export default function BlogPost() {
             <p>
               Your security provider should never have access to your credentials. Client-side encryption ensures only you (and your designated successors) can decrypt sensitive data.
             </p>
+
+            <div className="my-8">
+              <Image
+                src="https://cdn.marblism.com/cauKt_zlRhF.webp"
+                alt="Founder-optimized security framework diagram"
+                width={800}
+                height={450}
+                className="rounded-lg"
+                unoptimized
+              />
+              <p className="text-sm text-gray-600 text-center mt-2 italic">
+                Balanced security framework maintains protection while ensuring succession capability
+              </p>
+            </div>
 
             <h2>The Security Audit for Succession</h2>
             <p>
