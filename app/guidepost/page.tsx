@@ -4,13 +4,22 @@ import Link from 'next/link'
 export default function GuidepostPage() {
   const posts = [
     {
-      id: 'effdacfc-7354-4662-91f6-96ca6366e1eb',
+      id: 'understanding-succession-certainty',
       title: 'The Guidepost: Understanding Succession Certainty',
       excerpt: 'Explore the fundamental principles behind Cairn Zero\'s approach to digital legacy and why traditional solutions fall short.',
       date: 'April 20, 2026',
       author: 'Penny',
       slug: 'understanding-succession-certainty'
-    }
+    },
+    {
+      id: '10-reasons-protection-plan-will-fail',
+      title: '10 Reasons Your Protection Plan Will Fail',
+      excerpt: 'Common pitfalls in succession planning and how to avoid them.',
+      date: 'April 18, 2026',
+      author: 'Penny',
+      slug: '10-reasons-protection-plan-will-fail'
+    },
+    // Add your other 9 articles here with their actual titles, excerpts, dates, and slugs
   ]
 
   return (
@@ -55,13 +64,6 @@ export default function GuidepostPage() {
               </div>
             </article>
           ))}
-
-          <div className="bg-blue-50 border-2 border-dashed border-blue-200 rounded-lg p-8 text-center">
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">More Articles Coming Soon</h3>
-            <p className="text-gray-600">
-              We're working on new content to help you achieve succession certainty. Check back soon!
-            </p>
-          </div>
         </div>
 
         <div className="mt-16 bg-gray-900 text-white rounded-lg p-8">
@@ -70,10 +72,18 @@ export default function GuidepostPage() {
             <p className="text-gray-300 mb-6">
               Get the latest insights on succession planning and digital sovereignty delivered to your inbox.
             </p>
-            <form className="flex flex-col sm:flex-row gap-4 justify-center">
+            <form 
+              name="newsletter" 
+              method="POST" 
+              data-netlify="true"
+              className="flex flex-col sm:flex-row gap-4 justify-center"
+            >
+              <input type="hidden" name="form-name" value="newsletter" />
               <input
                 type="email"
+                name="email"
                 placeholder="Enter your email"
+                required
                 className="px-4 py-3 rounded-lg text-gray-900 flex-1 max-w-md"
               />
               <button
