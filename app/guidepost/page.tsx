@@ -1,5 +1,6 @@
 
 import Link from 'next/link'
+import Image from 'next/image'
 
 export default function GuidepostPage() {
   const posts = [
@@ -9,7 +10,8 @@ export default function GuidepostPage() {
       excerpt: 'Explore the fundamental principles behind Cairn Zero\'s approach to digital legacy and why traditional solutions fall short.',
       date: 'April 20, 2026',
       author: 'Penny',
-      slug: 'understanding-succession-certainty'
+      slug: 'understanding-succession-certainty',
+      thumbnail: '/images/articles/understanding-succession-certainty.jpg'
     },
     {
       id: '10-reasons-protection-plan-will-fail',
@@ -17,7 +19,8 @@ export default function GuidepostPage() {
       excerpt: 'Discover the common pitfalls in succession planning that leave founders vulnerable and how to avoid them.',
       date: 'April 18, 2026',
       author: 'Penny',
-      slug: '10-reasons-protection-plan-will-fail'
+      slug: '10-reasons-protection-plan-will-fail',
+      thumbnail: '/images/articles/10-reasons-protection-plan-will-fail.jpg'
     },
     {
       id: '7-mistakes-cybersecurity',
@@ -25,7 +28,8 @@ export default function GuidepostPage() {
       excerpt: 'Learn about the security vulnerabilities that put your business at risk and how to fix them.',
       date: 'April 15, 2026',
       author: 'Penny',
-      slug: '7-mistakes-cybersecurity'
+      slug: '7-mistakes-cybersecurity',
+      thumbnail: '/images/articles/7-mistakes-cybersecurity.jpg'
     },
     {
       id: 'business-asset-protection-security-secrets',
@@ -33,7 +37,8 @@ export default function GuidepostPage() {
       excerpt: 'Uncover the hidden strategies that protect your most valuable business assets from unauthorized access.',
       date: 'April 12, 2026',
       author: 'Penny',
-      slug: 'business-asset-protection-security-secrets'
+      slug: 'business-asset-protection-security-secrets',
+      thumbnail: '/images/articles/business-asset-protection-security-secrets.jpg'
     },
     {
       id: 'founder-identity-ai-deepfakes',
@@ -41,7 +46,8 @@ export default function GuidepostPage() {
       excerpt: 'How artificial intelligence threats are changing the game for founder authentication and what you can do about it.',
       date: 'April 10, 2026',
       author: 'Penny',
-      slug: 'founder-identity-ai-deepfakes'
+      slug: 'founder-identity-ai-deepfakes',
+      thumbnail: '/images/articles/founder-identity-ai-deepfakes.jpg'
     },
     {
       id: 'founder-immortality-trap',
@@ -49,7 +55,8 @@ export default function GuidepostPage() {
       excerpt: 'Why the belief that "I\'ll always be here" is the most dangerous assumption in business continuity.',
       date: 'April 8, 2026',
       author: 'Penny',
-      slug: 'founder-immortality-trap'
+      slug: 'founder-immortality-trap',
+      thumbnail: '/images/articles/founder-immortality-trap.jpg'
     },
     {
       id: 'founders-guide-endpoint-security',
@@ -57,7 +64,8 @@ export default function GuidepostPage() {
       excerpt: 'Practical strategies for securing every device that accesses your critical business systems.',
       date: 'April 5, 2026',
       author: 'Penny',
-      slug: 'founders-guide-endpoint-security'
+      slug: 'founders-guide-endpoint-security',
+      thumbnail: '/images/articles/founders-guide-endpoint-security.jpg'
     },
     {
       id: 'legacy-certainty-ultimate-continuity',
@@ -65,7 +73,8 @@ export default function GuidepostPage() {
       excerpt: 'Moving beyond backup plans to create true succession certainty for your digital empire.',
       date: 'April 3, 2026',
       author: 'Penny',
-      slug: 'legacy-certainty-ultimate-continuity'
+      slug: 'legacy-certainty-ultimate-continuity',
+      thumbnail: '/images/articles/legacy-certainty-ultimate-continuity.jpg'
     },
     {
       id: 'proactive-guide-it-security',
@@ -73,7 +82,8 @@ export default function GuidepostPage() {
       excerpt: 'Stop reacting to threats and start building a security posture that anticipates problems before they happen.',
       date: 'March 30, 2026',
       author: 'Penny',
-      slug: 'proactive-guide-it-security'
+      slug: 'proactive-guide-it-security',
+      thumbnail: '/images/articles/proactive-guide-it-security.jpg'
     },
     {
       id: 'stop-wasting-time-managed-security',
@@ -81,7 +91,8 @@ export default function GuidepostPage() {
       excerpt: 'The compelling case for outsourcing security operations so you can focus on building your business.',
       date: 'March 28, 2026',
       author: 'Penny',
-      slug: 'stop-wasting-time-managed-security'
+      slug: 'stop-wasting-time-managed-security',
+      thumbnail: '/images/articles/stop-wasting-time-managed-security.jpg'
     },
     {
       id: 'ultimate-guide-it-security',
@@ -89,7 +100,8 @@ export default function GuidepostPage() {
       excerpt: 'A comprehensive roadmap to building unbreakable security practices for your growing company.',
       date: 'March 25, 2026',
       author: 'Penny',
-      slug: 'ultimate-guide-it-security'
+      slug: 'ultimate-guide-it-security',
+      thumbnail: '/images/articles/ultimate-guide-it-security.jpg'
     },
     {
       id: 'website-branding-sovereignty-updates',
@@ -97,13 +109,14 @@ export default function GuidepostPage() {
       excerpt: 'How we\'re evolving the Cairn Zero brand to better reflect our zero-knowledge architecture and founder-first values.',
       date: 'March 22, 2026',
       author: 'Penny',
-      slug: 'website-branding-sovereignty-updates'
+      slug: 'website-branding-sovereignty-updates',
+      thumbnail: '/images/articles/website-branding-sovereignty-updates.jpg'
     }
   ]
 
   return (
     <div className="min-h-screen bg-gray-50 py-16 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         <div className="text-center mb-16">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">The Guidepost</h1>
           <p className="text-xl text-gray-600">
@@ -111,23 +124,34 @@ export default function GuidepostPage() {
           </p>
         </div>
 
-        <div className="flex flex-col gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {posts.map((post) => (
             <article key={post.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
-              <div className="p-8">
+              <Link href={`/guidepost/${post.slug}`}>
+                <div className="relative h-48 bg-gray-200">
+                  <Image
+                    src={post.thumbnail}
+                    alt={post.title}
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+              </Link>
+              
+              <div className="p-6">
                 <div className="flex items-center gap-4 text-sm text-gray-600 mb-3">
                   <time dateTime={post.date}>{post.date}</time>
                   <span>•</span>
                   <span>By {post.author}</span>
                 </div>
                 
-                <h2 className="text-2xl font-bold text-gray-900 mb-3">
+                <h2 className="text-xl font-bold text-gray-900 mb-3">
                   <Link href={`/guidepost/${post.slug}`} className="hover:text-blue-600 transition-colors">
                     {post.title}
                   </Link>
                 </h2>
                 
-                <p className="text-gray-700 mb-4 leading-relaxed">
+                <p className="text-gray-700 mb-4 leading-relaxed line-clamp-3">
                   {post.excerpt}
                 </p>
                 
