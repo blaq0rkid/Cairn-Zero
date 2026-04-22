@@ -1,40 +1,48 @@
-'use client'
-
-import { useEffect, useState } from 'react'  
-import { useRouter } from 'next/navigation'  
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import DashboardSkeleton from '@/components/DashboardSkeleton'
 
 export default function DashboardPage() {  
-  const router = useRouter()  
-  const supabase = createClientComponentClient()  
   const [loading, setLoading] = useState(true)  
-  const [session, setSession] = useState(null)
+  const [dataLoading, setDataLoading] = useState(true)  
+  const [successors, setSuccessors] = useState([])  
+  const [safeHarborStatus, setSafeHarborStatus] = useState(null)
 
   useEffect(() => {  
-    const initializeAuth = async () => {  
+    const loadDashboardData = async () => {  
+      // Auth check first  
       const { data: { session } } = await supabase.auth.getSession()  
-        
       if (!session) {  
         router.replace('/login')  
         return  
       }  
+      setLoading(false)
+
+      // Then fetch dashboard data  
+      setDataLoading(true)  
         
-      setSession(session)  
-      setLoading(false)  
+      // Fetch successors  
+      const { data: successorsData } = await supabase  
+        .from('successors')  
+        .select('*')  
+        .eq('founder_id', session.user.id)  
+        
+      setSuccessors(successorsData || [])  
+        
+      // Calculate Safe Harbor status (see Priority 4)  
+      // ...  
+        
+      setDataLoading(false)  
     }
 
-    initializeAuth()  
+    loadDashboardData()  
   }, [router, supabase])
 
-  // Don't render anything until auth check completes  
-  if (loading) {  
-    return null // Or render loading skeleton (see Priority 3)  
+  if (loading || dataLoading) {  
+    return <DashboardSkeleton />  
   }
 
-  // Session is guaranteed to exist here  
   return (  
     <div className="dashboard-content">  
-      {/* Dashboard UI */}  
+      {/* Actual dashboard UI with real data */}  
     </div>  
   )  
 }  
