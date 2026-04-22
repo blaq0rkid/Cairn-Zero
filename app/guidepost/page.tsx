@@ -14,12 +14,91 @@ export default function GuidepostPage() {
     {
       id: '10-reasons-protection-plan-will-fail',
       title: '10 Reasons Your Protection Plan Will Fail',
-      excerpt: 'Common pitfalls in succession planning and how to avoid them.',
+      excerpt: 'Discover the common pitfalls in succession planning that leave founders vulnerable and how to avoid them.',
       date: 'April 18, 2026',
       author: 'Penny',
       slug: '10-reasons-protection-plan-will-fail'
     },
-    // Add your other 9 articles here with their actual titles, excerpts, dates, and slugs
+    {
+      id: '7-mistakes-cybersecurity',
+      title: '7 Critical Cybersecurity Mistakes Founders Make',
+      excerpt: 'Learn about the security vulnerabilities that put your business at risk and how to fix them.',
+      date: 'April 15, 2026',
+      author: 'Penny',
+      slug: '7-mistakes-cybersecurity'
+    },
+    {
+      id: 'business-asset-protection-security-secrets',
+      title: 'Business Asset Protection: Security Secrets You Need to Know',
+      excerpt: 'Uncover the hidden strategies that protect your most valuable business assets from unauthorized access.',
+      date: 'April 12, 2026',
+      author: 'Penny',
+      slug: 'business-asset-protection-security-secrets'
+    },
+    {
+      id: 'founder-identity-ai-deepfakes',
+      title: 'Founder Identity in the Age of AI Deepfakes',
+      excerpt: 'How artificial intelligence threats are changing the game for founder authentication and what you can do about it.',
+      date: 'April 10, 2026',
+      author: 'Penny',
+      slug: 'founder-identity-ai-deepfakes'
+    },
+    {
+      id: 'founder-immortality-trap',
+      title: 'The Founder Immortality Trap',
+      excerpt: 'Why the belief that "I\'ll always be here" is the most dangerous assumption in business continuity.',
+      date: 'April 8, 2026',
+      author: 'Penny',
+      slug: 'founder-immortality-trap'
+    },
+    {
+      id: 'founders-guide-endpoint-security',
+      title: 'The Founder\'s Guide to Endpoint Security',
+      excerpt: 'Practical strategies for securing every device that accesses your critical business systems.',
+      date: 'April 5, 2026',
+      author: 'Penny',
+      slug: 'founders-guide-endpoint-security'
+    },
+    {
+      id: 'legacy-certainty-ultimate-continuity',
+      title: 'Legacy Certainty: The Ultimate Business Continuity',
+      excerpt: 'Moving beyond backup plans to create true succession certainty for your digital empire.',
+      date: 'April 3, 2026',
+      author: 'Penny',
+      slug: 'legacy-certainty-ultimate-continuity'
+    },
+    {
+      id: 'proactive-guide-it-security',
+      title: 'The Proactive Guide to IT Security',
+      excerpt: 'Stop reacting to threats and start building a security posture that anticipates problems before they happen.',
+      date: 'March 30, 2026',
+      author: 'Penny',
+      slug: 'proactive-guide-it-security'
+    },
+    {
+      id: 'stop-wasting-time-managed-security',
+      title: 'Stop Wasting Time: Why Managed Security Makes Sense',
+      excerpt: 'The compelling case for outsourcing security operations so you can focus on building your business.',
+      date: 'March 28, 2026',
+      author: 'Penny',
+      slug: 'stop-wasting-time-managed-security'
+    },
+    {
+      id: 'ultimate-guide-it-security',
+      title: 'The Ultimate Guide to IT Security for Founders',
+      excerpt: 'A comprehensive roadmap to building unbreakable security practices for your growing company.',
+      date: 'March 25, 2026',
+      author: 'Penny',
+      slug: 'ultimate-guide-it-security'
+    },
+    {
+      id: 'website-branding-sovereignty-updates',
+      title: 'Website Branding & Sovereignty Updates',
+      excerpt: 'How we\'re evolving the Cairn Zero brand to better reflect our zero-knowledge architecture and founder-first values.',
+      date: 'March 22, 2026',
+      author: 'Penny',
+      slug: 'website-branding-sovereignty-updates'
+    }
   ]
 
   return (
