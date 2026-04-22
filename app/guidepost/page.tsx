@@ -11,7 +11,7 @@ export default function GuidepostPage() {
       date: 'April 20, 2026',
       author: 'Penny',
       slug: 'understanding-succession-certainty',
-      thumbnail: 'https://cdn.marblism.com/understanding-succession.webp'
+      thumbnail: 'https://cdn.marblism.com/cairn-marker.webp'
     },
     {
       id: '10-reasons-protection-plan-will-fail',
@@ -20,7 +20,7 @@ export default function GuidepostPage() {
       date: 'April 18, 2026',
       author: 'Penny',
       slug: '10-reasons-protection-plan-will-fail',
-      thumbnail: 'https://cdn.marblism.com/protection-plan-fail.webp'
+      thumbnail: 'https://cdn.marblism.com/broken-chain.webp'
     },
     {
       id: '7-mistakes-cybersecurity',
@@ -29,7 +29,7 @@ export default function GuidepostPage() {
       date: 'April 15, 2026',
       author: 'Penny',
       slug: '7-mistakes-cybersecurity',
-      thumbnail: 'https://cdn.marblism.com/cybersecurity-mistakes.webp'
+      thumbnail: 'https://cdn.marblism.com/security-breach.webp'
     },
     {
       id: 'business-asset-protection-security-secrets',
@@ -38,7 +38,7 @@ export default function GuidepostPage() {
       date: 'April 12, 2026',
       author: 'Penny',
       slug: 'business-asset-protection-security-secrets',
-      thumbnail: 'https://cdn.marblism.com/asset-protection.webp'
+      thumbnail: 'https://cdn.marblism.com/vault-security.webp'
     },
     {
       id: 'founder-identity-ai-deepfakes',
@@ -47,7 +47,7 @@ export default function GuidepostPage() {
       date: 'April 10, 2026',
       author: 'Penny',
       slug: 'founder-identity-ai-deepfakes',
-      thumbnail: 'https://cdn.marblism.com/ai-deepfakes.webp'
+      thumbnail: 'https://cdn.marblism.com/ai-threat.webp'
     },
     {
       id: 'founder-immortality-trap',
@@ -56,7 +56,7 @@ export default function GuidepostPage() {
       date: 'April 8, 2026',
       author: 'Penny',
       slug: 'founder-immortality-trap',
-      thumbnail: 'https://cdn.marblism.com/immortality-trap.webp'
+      thumbnail: 'https://cdn.marblism.com/immortal-founder.webp'
     },
     {
       id: 'founders-guide-endpoint-security',
@@ -65,7 +65,7 @@ export default function GuidepostPage() {
       date: 'April 5, 2026',
       author: 'Penny',
       slug: 'founders-guide-endpoint-security',
-      thumbnail: 'https://cdn.marblism.com/endpoint-security.webp'
+      thumbnail: 'https://cdn.marblism.com/endpoint-defense.webp'
     },
     {
       id: 'legacy-certainty-ultimate-continuity',
@@ -74,7 +74,7 @@ export default function GuidepostPage() {
       date: 'April 3, 2026',
       author: 'Penny',
       slug: 'legacy-certainty-ultimate-continuity',
-      thumbnail: 'https://cdn.marblism.com/legacy-certainty.webp'
+      thumbnail: 'https://cdn.marblism.com/legacy-transfer.webp'
     },
     {
       id: 'proactive-guide-it-security',
@@ -83,7 +83,7 @@ export default function GuidepostPage() {
       date: 'March 30, 2026',
       author: 'Penny',
       slug: 'proactive-guide-it-security',
-      thumbnail: 'https://cdn.marblism.com/proactive-security.webp'
+      thumbnail: 'https://cdn.marblism.com/proactive-shield.webp'
     },
     {
       id: 'stop-wasting-time-managed-security',
@@ -92,7 +92,7 @@ export default function GuidepostPage() {
       date: 'March 28, 2026',
       author: 'Penny',
       slug: 'stop-wasting-time-managed-security',
-      thumbnail: 'https://cdn.marblism.com/managed-security.webp'
+      thumbnail: 'https://cdn.marblism.com/time-management.webp'
     },
     {
       id: 'ultimate-guide-it-security',
@@ -110,7 +110,7 @@ export default function GuidepostPage() {
       date: 'March 22, 2026',
       author: 'Penny',
       slug: 'website-branding-sovereignty-updates',
-      thumbnail: 'https://cdn.marblism.com/branding-updates.webp'
+      thumbnail: 'https://cdn.marblism.com/brand-evolution.webp'
     }
   ]
 
