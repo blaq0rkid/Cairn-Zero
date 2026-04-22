@@ -1,38 +1,39 @@
+
 'use client'
 
-import { useEffect } from 'react'  
-import { useRouter } from 'next/navigation'  
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 
-export default function DashboardLayout({  
-  children,  
-}: {  
-  children: React.ReactNode  
-}) {  
-  const router = useRouter()  
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  const router = useRouter()
   const supabase = createClientComponentClient()
 
-  useEffect(() => {  
-    const checkAuth = async () => {  
-      const { data: { session } } = await supabase.auth.getSession()  
-        
-      if (!session) {  
-        router.replace('/login')  
-      }  
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session) {
+        router.replace('/login')
+      }
     }
 
     checkAuth()
 
-    const {  
-      data: { subscription },  
-    } = supabase.auth.onAuthStateChange((_event, session) => {  
-      if (!session) {  
-        router.replace('/login')  
-      }  
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) {
+        router.replace('/login')
+      }
     })
 
-    return () => subscription.unsubscribe()  
+    return () => subscription.unsubscribe()
   }, [router, supabase])
 
-  return <>{children}</>  
-}  
+  return <>{children}</>
+}
