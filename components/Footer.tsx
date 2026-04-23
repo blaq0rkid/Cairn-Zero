@@ -70,7 +70,7 @@ export default function Footer() {
                     Founder Portal
                   </Link>
                 ) : (
-                  <Link href="/login" className="text-gray-400 hover:text-white transition-colors">
+                  <Link href="/founder" className="text-gray-400 hover:text-white transition-colors">
                     Founder Portal
                   </Link>
                 )}
