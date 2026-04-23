@@ -15,7 +15,7 @@ export default function GuidepostPage() {
     },
     {
       id: '7-mistakes-cybersecurity-small-business',
-      title: '7 Mistakes You're Making with Cybersecurity for Small Business (And How to Fix Them)',
+      title: '7 Mistakes You\'re Making with Cybersecurity for Small Business (And How to Fix Them)',
       excerpt: 'Small business security fails when critical access stay trapped in one person. Fix these seven gaps to reduce risk with Zero-Knowledge Sovereignty.',
       date: 'April 15, 2026',
       author: 'Aeron Carter',
@@ -78,7 +78,7 @@ export default function GuidepostPage() {
     },
     {
       id: 'business-asset-protection-security-secrets',
-      title: 'Business Asset Protection Security Secrets: How to Pass the 'Keys to the Kingdom' Without Giving Up Control',
+      title: 'Business Asset Protection Security Secrets: How to Pass the \'Keys to the Kingdom\' Without Giving Up Control',
       excerpt: 'If your access lives only with you, your business is exposed. Learn how to pass the keys without giving up control or sovereignty.',
       date: 'April 23, 2026',
       author: 'Aeron Carter',
