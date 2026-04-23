@@ -3,116 +3,107 @@ import Link from 'next/link'
 import Image from 'next/image'
 
 export default function GuidepostPage() {
-const posts = [  
-{  
-  id: 'legacy-certainty-ultimate-continuity-solution',  
-  title: 'Legacy Certainty: The Ultimate Continuity Solution for High-Stakes Professionals',  
-  excerpt: 'High-stakes professionals cannot leave continuity to memory or goodwill. Cairn Zero closes the succession gap by separating Active and Archive systems.',  
-  date: 'April 21, 2026',  
-  author: 'Aeron Carter',  
-  slug: 'legacy-certainty-ultimate-continuity-solution',  
-  thumbnail: 'https://cdn.marblism.com/zbQ5RjHePxD.webp'  
-},  
-{  
-  id: '7-mistakes-cybersecurity-small-business',  
-  title: '7 Mistakes You’re Making with Cybersecurity for Small Business (And How to Fix Them)',  
-  excerpt: 'Small business security fails when critical access stay trapped in one person. Fix these seven gaps to reduce risk with Zero-Knowledge Sovereignty.',  
-  date: 'April 15, 2026',  
-  author: 'Aeron Carter',  
-  slug: '7-mistakes-cybersecurity-small-business',  
-  thumbnail: 'https://cdn.marblism.com/d-vfzMa3XDo.webp'  
-},  
-{  
-  id: 'founder-identity-ai-deepfakes-business-threat',  
-  title: 'Founder Identity Matters: Why AI Deepfakes Are the New Cyber Threat to Business Continuity',  
-  excerpt: 'If founder identity is your final approval layer, AI deepfakes are an operational threat. Reduce risk by separating authority and consolidating silos.',  
-  date: 'April 16, 2026',  
-  author: 'Aeron Carter',  
-  slug: 'founder-identity-ai-deepfakes-business-threat',  
-  thumbnail: 'https://cdn.marblism.com/IeWvsmYgiT3.webp'  
-},  
-{  
-  id: 'founder-immortality-trap',  
-  title: 'The Founder Immortality Trap',  
-  excerpt: 'If your business only operates when you are available, it is exposed. This trap turns private knowledge into a single point of operational failure.',  
-  date: 'April 21, 2026',  
-  author: 'Aeron Carter',  
-  slug: 'founder-immortality-trap',  
-  thumbnail: 'https://cdn.marblism.com/uOEP4NQAY4G.webp'  
-},  
-{  
-  id: 'founders-guide-endpoint-security-business',  
-  title: 'The Founder\'s Guide to Endpoint Security for Business: End the Single Point of Failure',  
-  excerpt: 'Endpoint security does not solve succession risk. You must separate daily access from continuity access and build a controlled handoff model.',  
-  date: 'April 23, 2026',  
-  author: 'Aeron Carter',  
-  slug: 'founders-guide-endpoint-security-business',  
-  thumbnail: 'https://cdn.marblism.com/Os-ivmzZMAh.webp'  
-},  
-{  
-  id: 'build-bridge-successor-can-actually-use',  
-  title: 'Build the Bridge Your Successor Can Actually Use',  
-  excerpt: 'Close the Succession Gap with an Active system, an Archive system, and a zero-knowledge handover process your successor can execute under pressure.',  
-  date: 'April 23, 2026',  
-  author: 'Aeron Carter',  
-  slug: 'build-bridge-successor-can-actually-use',  
-  thumbnail: 'https://cdn.marblism.com/D3ZCjn_-PZY.webp'  
-},  
-{  
-  id: 'website-branding-sovereignty-updates',  
-  title: 'Draft Layout: Website Branding & Sovereignty Updates',  
-  excerpt: 'Aligning branding with Zero-Knowledge Sovereignty and the Certainty-Only principle to reduce operational uncertainty for successors.',  
-  date: 'April 23, 2026',  
-  author: 'Aeron Carter',  
-  slug: 'website-branding-sovereignty-updates',  
-  thumbnail: 'https://cdn.marblism.com/zrH5r56aHOY.webp'  
-},  
-{  
-  id: 'close-succession-gap-before-freezes-operations',  
-  title: 'Close Your Succession Gap Before It Freezes Operations',  
-  excerpt: 'Standard cybersecurity can protect systems and still fail the business. This guide shows how to reduce founder dependency and ensure continuity.',  
-  date: 'April 23, 2026',  
-  author: 'Aeron Carter',  
-  slug: 'close-succession-gap-before-freezes-operations',  
-  thumbnail: 'https://cdn.marblism.com/NG0U7Vm3ePz.webp'  
-},  
-{  
-  id: 'business-asset-protection-security-secrets',  
-  title: 'Business Asset Protection Security Secrets: How to Pass the ‘Keys to the Kingdom’ Without Giving Up Control',  
-  excerpt: 'If your access lives only with you, your business is exposed. Learn how to pass the keys without giving up control or sovereignty.',  
-  date: 'April 23, 2026',  
-  author: 'Aeron Carter',  
-  slug: 'business-asset-protection-security-secrets',  
-  thumbnail: 'https://cdn.marblism.com/D3ZCjn_-PZY.webp'  
-},  
-{  
-  id: '10-reasons-small-business-data-protection-plan-fails',  
-  title: '10 Reasons Your Small Business Data Protection Plan Will Fail',  
-  excerpt: 'Security is not just about keeping people out; it\'s about letting the right people in when it matters most. Close the gap with Zero-Knowledge Sovereignty.',  
-  date: 'April 23, 2026',  
-  author: 'Aeron Carter',  
-  slug: '10-reasons-small-business-data-protection-plan-fails',  
-  thumbnail: 'https://cdn.marblism.com/iMugfe5Nb5G.webp'  
-},  
-{  
-  id: 'stop-wasting-time-complex-managed-security-services',  
-  title: 'Stop Wasting Time on Complex Managed Security Services: Why You Need Certainty, Not Tooling Sprawl',  
-  excerpt: 'Small businesses fail when access is trapped with one person. Stop buying more tools if they do not guarantee successor access.',  
-  date: 'April 23, 2026',  
-  author: 'Aeron Carter',  
-  slug: 'stop-wasting-time-complex-managed-security-services',  
-  thumbnail: 'https://cdn.marblism.com/i8qWQt2HvgZ.webp'  
-},  
-{  
-  id: '7-mistakes-it-security-business-owners',  
-  title: '7 Mistakes You\'re Making with IT Security for Business Owners (and How to Avoid the Immortality Trap)',  
-  excerpt: 'Stop treating business security as a technical hurdle and start viewing it as a deterministic path to continuity.',  
-  date: 'April 22, 2026',  
-  author: 'Aeron Carter',  
-  slug: '7-mistakes-it-security-business-owners',  
-  thumbnail: 'https://cdn.marblism.com/D3ZCjn_-PZY.webp'  
-}  
-];  
+  const posts = [
+    {
+      id: '10-reasons-protection-plan-will-fail',
+      title: '10 Reasons Your Protection Plan Will Fail',
+      excerpt: 'Discover the common pitfalls in succession planning that leave founders vulnerable and how to avoid them.',
+      date: 'April 18, 2026',
+      author: 'Penny',
+      slug: '10-reasons-protection-plan-will-fail',
+      thumbnail: 'https://cdn.marblism.com/REPLACE-WITH-ACTUAL-URL.webp'
+    },
+    {
+      id: '7-mistakes-cybersecurity',
+      title: '7 Critical Cybersecurity Mistakes Founders Make',
+      excerpt: 'Learn about the security vulnerabilities that put your business at risk and how to fix them.',
+      date: 'April 15, 2026',
+      author: 'Penny',
+      slug: '7-mistakes-cybersecurity',
+      thumbnail: 'https://cdn.marblism.com/REPLACE-WITH-ACTUAL-URL.webp'
+    },
+    {
+      id: 'business-asset-protection-security-secrets',
+      title: 'Business Asset Protection: Security Secrets You Need to Know',
+      excerpt: 'Uncover the hidden strategies that protect your most valuable business assets from unauthorized access.',
+      date: 'April 12, 2026',
+      author: 'Penny',
+      slug: 'business-asset-protection-security-secrets',
+      thumbnail: 'https://cdn.marblism.com/REPLACE-WITH-ACTUAL-URL.webp'
+    },
+    {
+      id: 'founder-identity-ai-deepfakes',
+      title: 'Founder Identity in the Age of AI Deepfakes',
+      excerpt: 'How artificial intelligence threats are changing the game for founder authentication and what you can do about it.',
+      date: 'April 10, 2026',
+      author: 'Penny',
+      slug: 'founder-identity-ai-deepfakes',
+      thumbnail: 'https://cdn.marblism.com/REPLACE-WITH-ACTUAL-URL.webp'
+    },
+    {
+      id: 'founder-immortality-trap',
+      title: 'The Founder Immortality Trap',
+      excerpt: 'Why the belief that "I\'ll always be here" is the most dangerous assumption in business continuity.',
+      date: 'April 8, 2026',
+      author: 'Penny',
+      slug: 'founder-immortality-trap',
+      thumbnail: 'https://cdn.marblism.com/REPLACE-WITH-ACTUAL-URL.webp'
+    },
+    {
+      id: 'founders-guide-endpoint-security',
+      title: 'The Founder\'s Guide to Endpoint Security',
+      excerpt: 'Practical strategies for securing every device that accesses your critical business systems.',
+      date: 'April 5, 2026',
+      author: 'Penny',
+      slug: 'founders-guide-endpoint-security',
+      thumbnail: 'https://cdn.marblism.com/REPLACE-WITH-ACTUAL-URL.webp'
+    },
+    {
+      id: 'legacy-certainty-ultimate-continuity',
+      title: 'Legacy Certainty: The Ultimate Business Continuity',
+      excerpt: 'Moving beyond backup plans to create true succession certainty for your digital empire.',
+      date: 'April 3, 2026',
+      author: 'Penny',
+      slug: 'legacy-certainty-ultimate-continuity',
+      thumbnail: 'https://cdn.marblism.com/REPLACE-WITH-ACTUAL-URL.webp'
+    },
+    {
+      id: 'proactive-guide-it-security',
+      title: 'The Proactive Guide to IT Security',
+      excerpt: 'Stop reacting to threats and start building a security posture that anticipates problems before they happen.',
+      date: 'March 30, 2026',
+      author: 'Penny',
+      slug: 'proactive-guide-it-security',
+      thumbnail: 'https://cdn.marblism.com/REPLACE-WITH-ACTUAL-URL.webp'
+    },
+    {
+      id: 'stop-wasting-time-managed-security',
+      title: 'Stop Wasting Time: Why Managed Security Makes Sense',
+      excerpt: 'The compelling case for outsourcing security operations so you can focus on building your business.',
+      date: 'March 28, 2026',
+      author: 'Penny',
+      slug: 'stop-wasting-time-managed-security',
+      thumbnail: 'https://cdn.marblism.com/REPLACE-WITH-ACTUAL-URL.webp'
+    },
+    {
+      id: 'ultimate-guide-it-security',
+      title: 'The Ultimate Guide to IT Security for Founders',
+      excerpt: 'A comprehensive roadmap to building unbreakable security practices for your growing company.',
+      date: 'March 25, 2026',
+      author: 'Aeron Carter, Certainty Strategist',
+      slug: 'ultimate-guide-it-security',
+      thumbnail: 'https://cdn.marblism.com/H_O6LIJb092.webp'
+    },
+    {
+      id: 'website-branding-sovereignty-updates',
+      title: 'Website Branding & Sovereignty Updates',
+      excerpt: 'How we\'re evolving the Cairn Zero brand to better reflect our zero-knowledge architecture and founder-first values.',
+      date: 'March 22, 2026',
+      author: 'Penny',
+      slug: 'website-branding-sovereignty-updates',
+      thumbnail: 'https://cdn.marblism.com/REPLACE-WITH-ACTUAL-URL.webp'
+    }
+  ]
 
   return (
     <div className="min-h-screen bg-gray-50 py-16 px-4 sm:px-6 lg:px-8">
