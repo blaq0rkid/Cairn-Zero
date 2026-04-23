@@ -68,6 +68,15 @@ export default function GuidepostPage() {
       thumbnail: 'https://cdn.marblism.com/zbQ5RjHePxD.webp'
     },
     {
+      id: 'proactive-guide-it-security',
+      title: 'The Proactive Guide to IT Security',
+      excerpt: 'Stop reacting to threats and start building a security posture that anticipates problems before they happen.',
+      date: 'March 30, 2026',
+      author: 'Aeron Carter',
+      slug: 'proactive-guide-it-security',
+      thumbnail: 'https://cdn.marblism.com/proactive-shield.webp'
+    },
+    {
       id: 'stop-wasting-time-managed-security',
       title: 'Stop Wasting Time on Complex Managed Security Services: Why You Need Certainty, Not Tooling Sprawl',
       excerpt: 'Small businesses fail when access is trapped with one person. Stop buying more tools if they do not guarantee successor access.',
@@ -162,6 +171,7 @@ export default function GuidepostPage() {
               name="newsletter" 
               method="POST" 
               data-netlify="true"
+              action="/thank-you"
               className="flex flex-col sm:flex-row gap-4 justify-center"
             >
               <input type="hidden" name="form-name" value="newsletter" />
