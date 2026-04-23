@@ -22,6 +22,15 @@ export default function GuidepostPage() {
       slug: '7-mistakes-cybersecurity',
       thumbnail: 'https://cdn.marblism.com/d-vfzMa3XDo.webp'
     },
+    {  
+    id: 'proactive-guide-it-security-business-owners',  
+    title: 'The Proactive Guide to IT Security for Business Owners: Building a Bridge for Your Successor',  
+    excerpt: 'Close the Succession Gap with an Active system, an Archive system, and a zero-knowledge handover process your successor can execute under pressure.',  
+    date: 'April 23, 2026',  
+    author: 'Aeron Carter',  
+    slug: 'proactive-guide-it-security-business-owners',  
+    thumbnail: 'https://cdn.marblism.com/D3ZCjn_-PZY.webp'  
+  },
     {
       id: 'business-asset-protection-security-secrets',
       title: 'Business Asset Protection Security Secrets: How to Pass the Keys to the Kingdom Without Giving Up Control',
