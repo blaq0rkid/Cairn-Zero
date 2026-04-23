@@ -185,4 +185,3 @@ We close the "Succession Gap." We ensure that if a founder or key decision-maker
 </article>
 )
 }
-We close the "Succession Gap." We ensure that if a founder or key decision-maker is suddenly out of the picture, the business doesn't die with them. We provide the psychological and technical "cairn" that guides successors to the information they need to keep the company running. We deliver one thing: Certainty.
