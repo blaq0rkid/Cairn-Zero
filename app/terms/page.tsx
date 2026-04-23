@@ -1,4 +1,3 @@
-
 export default function TermsPage() {
   return (
     <div className="pt-24 pb-20 px-4 sm:px-6 lg:px-8">
