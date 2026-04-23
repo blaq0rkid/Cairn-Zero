@@ -43,12 +43,12 @@ export default function Footer() {
             <h4 className="font-semibold mb-4">Product</h4>
             <ul className="flex flex-col gap-2">
               <li>
-                <Link href="/pricing" className="text-gray-400 hover:text-white transition-colors">
+                <Link href="/#pricing" className="text-gray-400 hover:text-white transition-colors">
                   Pricing
                 </Link>
               </li>
               <li>
-                <Link href="/faqs" className="text-gray-400 hover:text-white transition-colors">
+                <Link href="/faq" className="text-gray-400 hover:text-white transition-colors">
                   FAQs
                 </Link>
               </li>
