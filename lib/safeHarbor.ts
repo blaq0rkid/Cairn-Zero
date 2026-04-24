@@ -12,16 +12,21 @@ export interface SafeHarborState {
 export interface Successor {
   id: string
   founder_id: string
-  name: string
+  successor_id: string | null
   email: string
-  slot_number: number
+  full_name: string
+  sequence_order: number
+  cairn_device_id: string | null
   status: string
+  notified_at: string | null
+  accessed_at: string | null
   created_at: string
+  updated_at: string
 }
 
 export interface SuccessionPlaybook {
   id: string
-  founder_id: string
+  owner_id: string
   is_complete: boolean
   hardware_delivery_date: string | null
   last_dry_run_at: string | null
