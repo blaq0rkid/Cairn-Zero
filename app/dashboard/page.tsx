@@ -8,6 +8,7 @@ import DashboardSkeleton from '@/components/DashboardSkeleton'
 import AddSuccessorModal from '@/components/AddSuccessorModal'
 import SimulateSuccessionModal from '@/components/SimulateSuccessionModal'
 import { calculateSafeHarborStatus, type Successor, type SuccessionPlaybook, type SeparationAttestation, type Heartbeat } from '@/lib/safeHarbor'
+import { Mail, CheckCircle, Clock } from 'lucide-react'
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -73,6 +74,33 @@ export default function DashboardPage() {
       fetchDashboardData(userId)
     }
     setShowSimulate(false)
+  }
+
+  const getStatusBadge = (successor: Successor) => {
+    if (successor.status === 'active') {
+      return (
+        <span className="flex items-center gap-2 px-3 py-1 rounded-full text-sm bg-green-100 text-green-800">
+          <CheckCircle size={16} />
+          Active
+        </span>
+      )
+    }
+    
+    if (successor.invitation_sent_at) {
+      return (
+        <span className="flex items-center gap-2 px-3 py-1 rounded-full text-sm bg-yellow-100 text-yellow-800">
+          <Clock size={16} />
+          Pending Acceptance
+        </span>
+      )
+    }
+    
+    return (
+      <span className="flex items-center gap-2 px-3 py-1 rounded-full text-sm bg-gray-100 text-gray-800">
+        <Mail size={16} />
+        Invitation Sent
+      </span>
+    )
   }
 
   if (loading) {
@@ -145,12 +173,13 @@ export default function DashboardPage() {
                       <div>
                         <p className="font-semibold text-gray-900">Slot {successor.sequence_order}: {successor.full_name}</p>
                         <p className="text-sm text-gray-600">{successor.email}</p>
+                        {successor.invitation_sent_at && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            Invited {new Date(successor.invitation_sent_at).toLocaleDateString()}
+                          </p>
+                        )}
                       </div>
-                      <span className={`px-3 py-1 rounded-full text-sm ${
-                        successor.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {successor.status}
-                      </span>
+                      {getStatusBadge(successor)}
                     </div>
                   ))}
                 </div>
