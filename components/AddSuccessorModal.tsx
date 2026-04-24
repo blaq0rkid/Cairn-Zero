@@ -14,14 +14,14 @@ interface AddSuccessorModalProps {
 
 export default function AddSuccessorModal({ userId, existingSuccessors, onClose, onSuccess }: AddSuccessorModalProps) {
   const supabase = createClientComponentClient()
-  const [name, setName] = useState('')
+  const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
-  const [slotNumber, setSlotNumber] = useState(1)
+  const [sequenceOrder, setSequenceOrder] = useState(1)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const availableSlots = [1, 2, 3].filter(
-    slot => !existingSuccessors.some(s => s.slot_number === slot)
+    slot => !existingSuccessors.some(s => s.sequence_order === slot)
   )
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -33,16 +33,15 @@ export default function AddSuccessorModal({ userId, existingSuccessors, onClose,
       const { error: insertError } = await supabase
         .from('successors')
         .insert({
-          owner_id: userId,
-          name,
+          founder_id: userId,
+          full_name: fullName,
           email,
-          slot_number: slotNumber,
+          sequence_order: sequenceOrder,
           status: 'pending'
         })
 
       if (insertError) throw insertError
 
-      // TODO: Send invitation email to successor
       onSuccess()
     } catch (err: any) {
       setError(err.message || 'Failed to add successor')
@@ -72,8 +71,8 @@ export default function AddSuccessorModal({ userId, existingSuccessors, onClose,
             <input
               id="name"
               type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
               required
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="John Doe"
@@ -101,8 +100,8 @@ export default function AddSuccessorModal({ userId, existingSuccessors, onClose,
             </label>
             <select
               id="slot"
-              value={slotNumber}
-              onChange={(e) => setSlotNumber(parseInt(e.target.value))}
+              value={sequenceOrder}
+              onChange={(e) => setSequenceOrder(parseInt(e.target.value))}
               required
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
