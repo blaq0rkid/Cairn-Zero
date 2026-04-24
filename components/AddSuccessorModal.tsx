@@ -30,6 +30,7 @@ export default function AddSuccessorModal({ userId, existingSuccessors, onClose,
     setError(null)
 
     try {
+      // Insert the successor
       const { error: insertError } = await supabase
         .from('successors')
         .insert({
@@ -41,6 +42,27 @@ export default function AddSuccessorModal({ userId, existingSuccessors, onClose,
         })
 
       if (insertError) throw insertError
+
+      // Get founder's name for the email
+      const { data: userData } = await supabase.auth.getUser()
+      const founderEmail = userData.user?.email || 'A Cairn Zero user'
+      
+      // Send invitation email
+      const response = await fetch('/api/successors/invite', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          successorEmail: email,
+          successorName: fullName,
+          founderName: founderEmail
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to send invitation email')
+      }
 
       onSuccess()
     } catch (err: any) {
@@ -135,7 +157,7 @@ export default function AddSuccessorModal({ userId, existingSuccessors, onClose,
               disabled={loading || availableSlots.length === 0}
               className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Adding...' : 'Add Successor'}
+              {loading ? 'Sending...' : 'Add Successor'}
             </button>
           </div>
         </form>
