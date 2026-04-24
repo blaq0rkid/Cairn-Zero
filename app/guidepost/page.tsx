@@ -13,6 +13,16 @@ export default function GuidepostPage() {
       slug: '10-reasons-protection-plan-will-fail',
       thumbnail: 'https://cdn.marblism.com/iMugfe5Nb5G.webp'
     },
+    {  
+  "id": "90ecca22-a271-4c67-9d59-f913e70a1ae7",  
+  "title": "Why Small Business Data Protection Will Change the Way You Think About Succession Planning",  
+  "date": "April 24, 2026",  
+  "author": "Aeron Carter, Certainty Strategist",  
+  "category": "Business Continuity",  
+  "excerpt": "The traditional model of business succession planning is fundamentally broken because it ignores the digital reality of modern ownership. Transitioning to a model of Zero-Knowledge Sovereignty ensures that your legacy is not held hostage.",  
+  "image": "https://cdn.marblism.com/D3ZCjn_-PZY.webp",  
+  "slug": "why-small-business-data-protection-succession-planning"  
+},
     {
       id: '7-mistakes-cybersecurity',
       title: '7 Mistakes You\'re Making with Cybersecurity (And How to Fix Them)',
