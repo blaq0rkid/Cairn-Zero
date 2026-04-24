@@ -18,6 +18,8 @@ export interface Successor {
   sequence_order: number
   cairn_device_id: string | null
   status: string
+  invitation_token: string | null
+  invitation_sent_at: string | null
   notified_at: string | null
   accessed_at: string | null
   created_at: string
