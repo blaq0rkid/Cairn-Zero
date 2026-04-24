@@ -3,7 +3,7 @@
 
 import { useState } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { X } from 'lucide-react'
+import { X, Mail, CheckCircle } from 'lucide-react'
 
 interface AddSuccessorModalProps {
   userId: string
@@ -18,6 +18,7 @@ export default function AddSuccessorModal({ userId, existingSuccessors, onClose,
   const [email, setEmail] = useState('')
   const [sequenceOrder, setSequenceOrder] = useState(1)
   const [loading, setLoading] = useState(false)
+  const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const availableSlots = [1, 2, 3].filter(
@@ -43,7 +44,7 @@ export default function AddSuccessorModal({ userId, existingSuccessors, onClose,
 
       if (insertError) throw insertError
 
-      // Get founder's name for the email
+      // Get founder's email
       const { data: userData } = await supabase.auth.getUser()
       const founderEmail = userData.user?.email || 'A Cairn Zero user'
       
@@ -56,7 +57,7 @@ export default function AddSuccessorModal({ userId, existingSuccessors, onClose,
         body: JSON.stringify({
           successorEmail: email,
           successorName: fullName,
-          founderName: founderEmail
+          founderEmail: founderEmail
         })
       })
 
@@ -64,12 +65,37 @@ export default function AddSuccessorModal({ userId, existingSuccessors, onClose,
         throw new Error('Failed to send invitation email')
       }
 
-      onSuccess()
+      setSuccess(true)
+      setTimeout(() => {
+        onSuccess()
+      }, 2000)
     } catch (err: any) {
       setError(err.message || 'Failed to add successor')
     } finally {
       setLoading(false)
     }
+  }
+
+  if (success) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="bg-white rounded-lg max-w-md w-full p-6">
+          <div className="text-center">
+            <div className="flex justify-center mb-4">
+              <CheckCircle className="text-green-600" size={64} />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Invitation Sent!</h2>
+            <p className="text-gray-600 mb-4">
+              {fullName} will receive an email with instructions to accept their designation.
+            </p>
+            <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
+              <Mail size={16} />
+              <span>Sent to {email}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -157,14 +183,14 @@ export default function AddSuccessorModal({ userId, existingSuccessors, onClose,
               disabled={loading || availableSlots.length === 0}
               className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Sending...' : 'Add Successor'}
+              {loading ? 'Sending Invitation...' : 'Send Invitation'}
             </button>
           </div>
         </form>
 
         <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
           <p className="text-sm text-blue-900">
-            <strong>Note:</strong> Your successor will receive an invitation email to verify their identity and accept the role.
+            <strong>Note:</strong> Your successor will receive an email invitation to review the legal terms and accept their designation.
           </p>
         </div>
       </div>
