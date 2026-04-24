@@ -14,15 +14,14 @@ export default function GuidepostPage() {
       thumbnail: 'https://cdn.marblism.com/iMugfe5Nb5G.webp'
     },
     {  
-  "id": "90ecca22-a271-4c67-9d59-f913e70a1ae7",  
-  "title": "Why Small Business Data Protection Will Change the Way You Think About Succession Planning",  
-  "date": "April 24, 2026",  
-  "author": "Aeron Carter, Certainty Strategist",  
-  "category": "Business Continuity",  
-  "excerpt": "The traditional model of business succession planning is fundamentally broken because it ignores the digital reality of modern ownership. Transitioning to a model of Zero-Knowledge Sovereignty ensures that your legacy is not held hostage.",  
-  "image": "https://cdn.marblism.com/D3ZCjn_-PZY.webp",  
-  "slug": "why-small-business-data-protection-succession-planning"  
-},
+      id: '90ecca22-a271-4c67-9d59-f913e70a1ae7',  
+      title: 'Why Small Business Data Protection Will Change the Way You Think About Succession Planning',  
+      date: 'April 24, 2026',  
+      author: 'Aeron Carter, Certainty Strategist',  
+      excerpt: 'The traditional model of business succession planning is fundamentally broken because it ignores the digital reality of modern ownership. Transitioning to a model of Zero-Knowledge Sovereignty ensures that your legacy is not held hostage.',  
+      thumbnail: 'https://cdn.marblism.com/D3ZCjn_-PZY.webp',  
+      slug: 'why-small-business-data-protection-succession-planning'  
+    },
     {
       id: '7-mistakes-cybersecurity',
       title: '7 Mistakes You\'re Making with Cybersecurity (And How to Fix Them)',
@@ -122,7 +121,7 @@ export default function GuidepostPage() {
               <Link href={`/guidepost/${post.slug}`}>
                 <div className="relative h-48 bg-gray-200 overflow-hidden">
                   <Image
-                    src={post.thumbnail}
+                    src={post.thumbnail || '/api/placeholder/400/320'}
                     alt={post.title}
                     fill
                     className="object-cover group-hover:scale-105 transition-transform duration-300"
