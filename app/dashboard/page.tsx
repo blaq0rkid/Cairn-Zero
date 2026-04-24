@@ -48,7 +48,7 @@ export default function DashboardPage() {
 
   const fetchDashboardData = async (userId: string) => {
     const [successorsRes, playbookRes, attestationRes, heartbeatRes] = await Promise.all([
-      supabase.from('successors').select('*').eq('owner_id', userId),
+      supabase.from('successors').select('*').eq('founder_id', userId),
       supabase.from('succession_playbook').select('*').eq('owner_id', userId).single(),
       supabase.from('separation_attestation').select('*').eq('founder_id', userId).single(),
       supabase.from('heartbeat').select('*').eq('founder_id', userId).order('created_at', { ascending: false }).limit(1).single()
@@ -143,7 +143,7 @@ export default function DashboardPage() {
                   {successors.map((successor) => (
                     <div key={successor.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
                       <div>
-                        <p className="font-semibold text-gray-900">Slot {successor.slot_number}: {successor.name}</p>
+                        <p className="font-semibold text-gray-900">Slot {successor.sequence_order}: {successor.full_name}</p>
                         <p className="text-sm text-gray-600">{successor.email}</p>
                       </div>
                       <span className={`px-3 py-1 rounded-full text-sm ${
