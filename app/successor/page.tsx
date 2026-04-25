@@ -18,6 +18,7 @@ export default function SuccessorDashboard() {
   const [accessKey, setAccessKey] = useState('')
   const [isUnlocked, setIsUnlocked] = useState(false)
   const [showWelcome, setShowWelcome] = useState(searchParams?.get('welcome') === 'true')
+  const [validationError, setValidationError] = useState('')
   
   // Sandbox: Simulate archive key always inserted
   const [isArchiveKeyInserted] = useState(SANDBOX_MODE ? true : false)
@@ -60,18 +61,28 @@ export default function SuccessorDashboard() {
 
   const handleAccessKeySubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    setValidationError('')
     
-    // Sandbox: Accept any cz- prefixed key
+    const trimmedKey = accessKey.trim()
+    
+    // Normalize to uppercase for validation
+    const normalizedKey = trimmedKey.toUpperCase()
+    
+    // Sandbox: Accept any key starting with "CZ-"
     if (SANDBOX_MODE) {
-      if (accessKey.toLowerCase().startsWith('cz-')) {
+      if (normalizedKey.startsWith('CZ-')) {
+        console.log('✅ Sandbox mode: Access key validated -', trimmedKey)
         setIsUnlocked(true)
+        return
+      } else {
+        setValidationError('Access key must start with "CZ-" (e.g., CZ-2026)')
         return
       }
     }
     
-    // Production: Validate actual access key
+    // Production: Validate against cairn_devices table
     // TODO: Implement real validation against encrypted founder data
-    alert('Invalid access key. Please check and try again.')
+    setValidationError('Invalid access key. Please verify and try again.')
   }
 
   if (loading) {
@@ -162,28 +173,39 @@ export default function SuccessorDashboard() {
             <form onSubmit={handleAccessKeySubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Cairn Access Key (cz-XXXX)
+                  Cairn Access Key
                 </label>
                 <input
                   type="text"
                   value={accessKey}
-                  onChange={(e) => setAccessKey(e.target.value)}
-                  placeholder={SANDBOX_MODE ? "Enter cz-2026 (sandbox)" : "Enter cz-XXXX"}
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono"
+                  onChange={(e) => {
+                    setAccessKey(e.target.value)
+                    setValidationError('')
+                  }}
+                  placeholder={SANDBOX_MODE ? "Enter CZ-2026" : "Enter CZ-XXXX"}
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono uppercase"
                   disabled={!isArchiveKeyInserted}
                 />
                 {!isArchiveKeyInserted && (
-                  <p className="text-sm text-red-600 mt-1">Archive Key must be connected</p>
+                  <p className="text-sm text-red-600 mt-2">Archive Key must be connected</p>
                 )}
                 {SANDBOX_MODE && (
-                  <p className="text-xs text-gray-500 mt-1">Sandbox: Any key starting with "cz-" will work</p>
+                  <p className="text-xs text-blue-600 mt-2">
+                    🧪 Sandbox Mode: Any key starting with "CZ-" will unlock (e.g., CZ-2026)
+                  </p>
+                )}
+                {validationError && (
+                  <p className="text-sm text-red-600 mt-2 flex items-center gap-2">
+                    <AlertTriangle size={16} />
+                    {validationError}
+                  </p>
                 )}
               </div>
 
               <button
                 type="submit"
-                disabled={!isArchiveKeyInserted || !accessKey}
-                className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold flex items-center justify-center gap-2"
+                disabled={!isArchiveKeyInserted || !accessKey.trim()}
+                className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold flex items-center justify-center gap-2 transition-colors"
               >
                 <Unlock size={20} />
                 Unlock Dashboard
@@ -192,42 +214,63 @@ export default function SuccessorDashboard() {
           </div>
         ) : (
           <div className="space-y-6">
+            <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4 flex items-center gap-3">
+              <CheckCircle className="text-green-600" size={24} />
+              <div>
+                <p className="font-semibold text-green-900">Access Granted</p>
+                <p className="text-sm text-green-700">Cairn ID: {accessKey.toUpperCase()}</p>
+              </div>
+            </div>
+
             <div className="bg-white rounded-lg shadow-lg p-6">
               <div className="flex items-center gap-3 mb-4">
                 <Unlock className="text-green-600" size={24} />
-                <h2 className="text-xl font-bold">Access Granted</h2>
+                <h2 className="text-xl font-bold">Succession Dashboard</h2>
               </div>
 
-              <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4 mb-4">
-                <p className="text-sm text-green-700">
-                  <strong>Note:</strong> You have unlocked the dashboard view. In production, this would display the founder's succession duties and encrypted data access instructions.
+              <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 mb-6">
+                <p className="text-sm text-blue-700">
+                  <strong>Note:</strong> In production, this view displays the founder's succession duties and encrypted data access instructions. Currently showing sandbox placeholder content.
                 </p>
               </div>
 
               <div className="space-y-4">
                 <div className="border-2 border-gray-200 rounded-lg p-4">
-                  <h3 className="font-bold mb-2">Succession Duties</h3>
-                  <ul className="list-disc list-inside space-y-1 text-gray-700 text-sm">
+                  <h3 className="font-bold mb-3 flex items-center gap-2">
+                    <Shield className="text-blue-600" size={20} />
+                    Succession Duties
+                  </h3>
+                  <ul className="list-disc list-inside space-y-2 text-gray-700 text-sm">
                     <li>Access company email accounts using provided credentials</li>
                     <li>Notify key business contacts of succession event</li>
                     <li>Transfer domain registrations to designated party</li>
-                    <li>Archive critical business documents</li>
+                    <li>Archive critical business documents to secure storage</li>
+                    <li>Execute documented business continuity procedures</li>
                   </ul>
                 </div>
 
                 <div className="border-2 border-gray-200 rounded-lg p-4">
-                  <h3 className="font-bold mb-2">Encrypted Data Access</h3>
-                  <p className="text-sm text-gray-600 mb-3">The following data vaults are available:</p>
+                  <h3 className="font-bold mb-3 flex items-center gap-2">
+                    <Key className="text-blue-600" size={20} />
+                    Encrypted Data Vaults
+                  </h3>
+                  <p className="text-sm text-gray-600 mb-3">The following data vaults are available for decryption:</p>
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between bg-gray-50 p-3 rounded">
+                    <div className="flex items-center justify-between bg-gray-50 p-3 rounded border border-gray-200">
                       <span className="text-sm font-medium">Business Credentials Vault</span>
-                      <button className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700">
+                      <button className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors">
                         Decrypt
                       </button>
                     </div>
-                    <div className="flex items-center justify-between bg-gray-50 p-3 rounded">
+                    <div className="flex items-center justify-between bg-gray-50 p-3 rounded border border-gray-200">
                       <span className="text-sm font-medium">Legal Documents Archive</span>
-                      <button className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700">
+                      <button className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors">
+                        Decrypt
+                      </button>
+                    </div>
+                    <div className="flex items-center justify-between bg-gray-50 p-3 rounded border border-gray-200">
+                      <span className="text-sm font-medium">Client Contact Database</span>
+                      <button className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors">
                         Decrypt
                       </button>
                     </div>
