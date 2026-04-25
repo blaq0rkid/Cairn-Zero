@@ -7,8 +7,23 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import DashboardSkeleton from '@/components/DashboardSkeleton'
 import AddSuccessorModal from '@/components/AddSuccessorModal'
 import SimulateSuccessionModal from '@/components/SimulateSuccessionModal'
-import { calculateSafeHarborStatus, type Successor, type SuccessionPlaybook, type SeparationAttestation, type Heartbeat } from '@/lib/safeHarbor'
-import { Mail, CheckCircle, Clock, XCircle, Trash2 } from 'lucide-react'
+import { Mail, CheckCircle, Clock, Trash2 } from 'lucide-react'
+
+interface Successor {
+  id: string
+  founder_id: string
+  successor_id: string | null
+  email: string
+  full_name: string | null
+  sequence_order: number
+  cairn_device_id: string | null
+  status: string
+  invitation_token: string | null
+  notified_at: string | null
+  accessed_at: string | null
+  created_at: string
+  updated_at: string
+}
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -17,9 +32,6 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [userId, setUserId] = useState<string | null>(null)
   const [successors, setSuccessors] = useState<Successor[]>([])
-  const [successionPlaybook, setSuccessionPlaybook] = useState<SuccessionPlaybook | null>(null)
-  const [separationAttestation, setSeparationAttestation] = useState<SeparationAttestation | null>(null)
-  const [heartbeat, setHeartbeat] = useState<Heartbeat | null>(null)
   const [showAddSuccessor, setShowAddSuccessor] = useState(false)
   const [showSimulate, setShowSimulate] = useState(false)
   const [revokingId, setRevokingId] = useState<string | null>(null)
@@ -49,17 +61,13 @@ export default function DashboardPage() {
   }, [router, supabase])
 
   const fetchDashboardData = async (userId: string) => {
-    const [successorsRes, playbookRes, attestationRes, heartbeatRes] = await Promise.all([
-      supabase.from('successors').select('*').eq('founder_id', userId).neq('status', 'revoked'),
-      supabase.from('succession_playbook').select('*').eq('owner_id', userId).single(),
-      supabase.from('separation_attestation').select('*').eq('founder_id', userId).single(),
-      supabase.from('heartbeat').select('*').eq('founder_id', userId).order('created_at', { ascending: false }).limit(1).single()
-    ])
+    const { data: successorsData } = await supabase
+      .from('successors')
+      .select('*')
+      .eq('founder_id', userId)
+      .neq('status', 'revoked')
 
-    setSuccessors(successorsRes.data || [])
-    setSuccessionPlaybook(playbookRes.data)
-    setSeparationAttestation(attestationRes.data)
-    setHeartbeat(heartbeatRes.data)
+    setSuccessors(successorsData || [])
     setLoading(false)
   }
 
@@ -108,7 +116,7 @@ export default function DashboardPage() {
   }
 
   const getStatusBadge = (successor: Successor) => {
-    if (successor.status === 'active' && successor.digital_attestation_signed_at) {
+    if (successor.status === 'active' && successor.accessed_at) {
       return (
         <span className="flex items-center gap-2 px-3 py-1 rounded-full text-sm bg-green-100 text-green-800">
           <CheckCircle size={16} />
@@ -117,16 +125,7 @@ export default function DashboardPage() {
       )
     }
     
-    if (successor.status === 'active' && !successor.digital_attestation_signed_at) {
-      return (
-        <span className="flex items-center gap-2 px-3 py-1 rounded-full text-sm bg-yellow-100 text-yellow-800">
-          <Clock size={16} />
-          Accepted - Awaiting Attestation
-        </span>
-      )
-    }
-    
-    if (successor.invitation_sent_at) {
+    if (successor.notified_at) {
       return (
         <span className="flex items-center gap-2 px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800">
           <Mail size={16} />
@@ -147,50 +146,13 @@ export default function DashboardPage() {
     return <DashboardSkeleton />
   }
 
-  const safeHarborState = calculateSafeHarborStatus(
-    successors,
-    successionPlaybook,
-    'CURRENT',
-    separationAttestation,
-    heartbeat
-  )
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'ACTIVE':
-        return 'bg-green-100 text-green-800 border-green-300'
-      case 'PENDING':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-300'
-      case 'SUSPENDED':
-        return 'bg-orange-100 text-orange-800 border-orange-300'
-      case 'VOID':
-        return 'bg-red-100 text-red-800 border-red-300'
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-300'
-    }
-  }
-
   return (
     <>
       <div className="min-h-screen bg-gray-50 p-8">
         <div className="max-w-6xl mx-auto">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Founder Portal</h1>
-            <p className="text-gray-600">Manage your succession plan and Safe Harbor status</p>
-          </div>
-
-          <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-semibold text-gray-900 mb-1">Safe Harbor Status</h2>
-                <p className="text-sm text-gray-600">
-                  {safeHarborState.reason || 'All protections active'}
-                </p>
-              </div>
-              <div className={`px-4 py-2 rounded-lg border-2 font-semibold ${getStatusColor(safeHarborState.status)}`}>
-                {safeHarborState.status}
-              </div>
-            </div>
+            <p className="text-gray-600">Manage your succession plan</p>
           </div>
 
           <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
@@ -213,21 +175,16 @@ export default function DashboardPage() {
                       <div className="flex-1">
                         <p className="font-semibold text-gray-900">Slot {successor.sequence_order}: {successor.full_name}</p>
                         <p className="text-sm text-gray-600">{successor.email}</p>
-                        {successor.invitation_sent_at && (
+                        {successor.notified_at && (
                           <p className="text-xs text-gray-500 mt-1">
-                            Invited {new Date(successor.invitation_sent_at).toLocaleDateString()}
-                          </p>
-                        )}
-                        {successor.digital_attestation_signed_at && (
-                          <p className="text-xs text-green-600 mt-1">
-                            ✓ Attestation signed {new Date(successor.digital_attestation_signed_at).toLocaleDateString()}
+                            Invited {new Date(successor.notified_at).toLocaleDateString()}
                           </p>
                         )}
                       </div>
                       <div className="flex items-center gap-3">
                         {getStatusBadge(successor)}
                         <button
-                          onClick={() => handleRevoke(successor.id, successor.full_name)}
+                          onClick={() => handleRevoke(successor.id, successor.full_name || 'this successor')}
                           disabled={revokingId === successor.id}
                           className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
                           title="Revoke designation"
