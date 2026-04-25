@@ -24,7 +24,7 @@ export default function Footer() {
             <h4 className="font-semibold mb-4">Access</h4>
             <ul className="flex flex-col gap-2 text-sm text-gray-400">
               <li><a href="/login" className="hover:text-white">Founder Login</a></li>
-              <li><a href="/successor/login" className="hover:text-white">Successor Access</a></li>
+              <li><a href="/claim" className="hover:text-white">Successor Access</a></li>
             </ul>
           </div>
 
