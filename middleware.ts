@@ -3,35 +3,38 @@ import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
-export async function middleware(req: NextRequest) {
+export async function middleware(request: NextRequest) {
   const res = NextResponse.next()
-  const supabase = createMiddlewareClient({ req, res })
+  const supabase = createMiddlewareClient({ req: request, res })
 
   const {
     data: { session },
   } = await supabase.auth.getSession()
 
-  // Protected routes that require authentication
-  const protectedRoutes = ['/founder', '/dashboard']
-  const isProtectedRoute = protectedRoutes.some(route => 
-    req.nextUrl.pathname.startsWith(route)
-  )
+  // Public routes that don't require authentication
+  const publicPaths = ['/login', '/signup', '/auth/callback', '/successor/accept']
+  const isPublicPath = publicPaths.some(path => request.nextUrl.pathname.startsWith(path))
 
-  // Redirect to login if accessing protected route without session
-  if (isProtectedRoute && !session) {
-    const redirectUrl = new URL('/login', req.url)
-    redirectUrl.searchParams.set('redirectTo', req.nextUrl.pathname)
+  // If accessing a public path, allow through
+  if (isPublicPath) {
+    return res
+  }
+
+  // If no session and trying to access protected route, redirect to login
+  if (!session && request.nextUrl.pathname !== '/login') {
+    const redirectUrl = new URL('/login', request.url)
     return NextResponse.redirect(redirectUrl)
   }
 
-  // Redirect to founder dashboard if logged in and accessing login page
-  if (req.nextUrl.pathname === '/login' && session) {
-    return NextResponse.redirect(new URL('/founder', req.url))
+  // If has session and trying to access login, redirect to dashboard
+  if (session && request.nextUrl.pathname === '/login') {
+    const redirectUrl = new URL('/dashboard', request.url)
+    return NextResponse.redirect(redirectUrl)
   }
 
   return res
 }
 
 export const config = {
-  matcher: ['/founder/:path*', '/dashboard/:path*', '/login'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|api).*)'],
 }
