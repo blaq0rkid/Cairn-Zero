@@ -24,14 +24,17 @@ export default function SuccessorInvitation({ params }: { params: { token: strin
       try {
         const { data: { user } } = await supabase.auth.getUser()
 
+        // Check if token exists, is valid, and hasn't been used
         const { data, error } = await supabase
           .from('successors')
           .select('*, profiles!successors_founder_id_fkey(email, full_name)')
           .eq('invitation_token', params.token)
           .not('invitation_token', 'is', null)
+          .eq('invitation_token_used', false)
           .single()
 
         if (error || !data) {
+          // Check if user is already a successor (link was already used)
           if (user) {
             const { data: existingSuccessor } = await supabase
               .from('successors')
@@ -47,19 +50,20 @@ export default function SuccessorInvitation({ params }: { params: { token: strin
             }
           }
 
-          setError('This invitation link has expired or has already been used.')
+          setError('expired')
           setLoading(false)
           return
         }
 
+        // Check if already accepted or declined
         if (data.status === 'active') {
-          setError('This invitation has already been accepted.')
+          setError('already-accepted')
           setLoading(false)
           return
         }
 
         if (data.status === 'declined') {
-          setError('This invitation was previously declined.')
+          setError('already-declined')
           setLoading(false)
           return
         }
@@ -69,7 +73,7 @@ export default function SuccessorInvitation({ params }: { params: { token: strin
         setLoading(false)
       } catch (err: any) {
         console.error('Error validating token:', err)
-        setError('An error occurred while validating your invitation.')
+        setError('validation-error')
         setLoading(false)
       }
     }
@@ -86,21 +90,26 @@ export default function SuccessorInvitation({ params }: { params: { token: strin
     setProcessing(true)
 
     try {
+      // Update status and mark token as used
       const { error: updateError } = await supabase
         .from('successors')
         .update({ 
           status: 'active',
           accessed_at: new Date().toISOString(),
           legal_accepted_at: new Date().toISOString(),
-          invitation_token: null
+          invitation_token: null,
+          invitation_token_used: true // Mark as used
         })
         .eq('invitation_token', params.token)
+        .eq('invitation_token_used', false) // Safety check
 
       if (updateError) throw updateError
 
+      console.log('✅ Successor accepted, redirecting to login')
       router.push('/successor/login?welcome=true')
     } catch (err: any) {
-      setError(err.message)
+      console.error('❌ Accept error:', err)
+      setError('processing-error')
       setProcessing(false)
     }
   }
@@ -109,20 +118,23 @@ export default function SuccessorInvitation({ params }: { params: { token: strin
     setProcessing(true)
 
     try {
-      // Update status to declined and invalidate token
+      // Update status to declined and mark token as used
       const { error: updateError } = await supabase
         .from('successors')
         .update({ 
           status: 'declined',
           invitation_token: null,
-          declined_at: new Date().toISOString()
+          invitation_token_used: true, // Mark as used
+          declined_at: new Date().toISOString(),
+          legal_declined_at: new Date().toISOString()
         })
         .eq('invitation_token', params.token)
+        .eq('invitation_token_used', false) // Safety check
 
       if (updateError) throw updateError
 
       // Send notification to founder
-      const notificationResponse = await fetch('/api/successors/notify-founder', {
+      await fetch('/api/successors/notify-founder', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -132,14 +144,11 @@ export default function SuccessorInvitation({ params }: { params: { token: strin
         })
       })
 
-      if (!notificationResponse.ok) {
-        console.error('Failed to notify founder')
-      }
-
-      // Redirect to thank you page
+      console.log('✅ Successor declined, redirecting to thank you page')
       router.push('/successor/declined')
     } catch (err: any) {
-      setError(err.message)
+      console.error('❌ Decline error:', err)
+      setError('processing-error')
       setProcessing(false)
     }
   }
@@ -179,7 +188,13 @@ export default function SuccessorInvitation({ params }: { params: { token: strin
         <div className="max-w-md bg-red-50 border-2 border-red-200 rounded-lg p-8 text-center">
           <AlertCircle className="mx-auto mb-4 text-red-600" size={64} />
           <h2 className="text-2xl font-bold text-red-900 mb-3">Link Expired</h2>
-          <p className="text-red-700 mb-6">{error}</p>
+          <p className="text-red-700 mb-6">
+            {error === 'expired' && 'This invitation link has expired or has already been used.'}
+            {error === 'already-accepted' && 'This invitation has already been accepted.'}
+            {error === 'already-declined' && 'This invitation was previously declined.'}
+            {error === 'processing-error' && 'An error occurred while processing your request.'}
+            {error === 'validation-error' && 'An error occurred while validating your invitation.'}
+          </p>
           <div className="bg-white border border-red-200 rounded p-4 text-left text-sm">
             <p className="font-semibold mb-2">Next Steps:</p>
             <ol className="list-decimal list-inside flex flex-col gap-1 text-gray-700">
@@ -226,7 +241,8 @@ export default function SuccessorInvitation({ params }: { params: { token: strin
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <button
               onClick={() => setShowAcceptModal(true)}
-              className="px-6 py-4 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold text-lg transition-colors flex items-center justify-center gap-2"
+              disabled={processing}
+              className="px-6 py-4 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold text-lg transition-colors flex items-center justify-center gap-2"
             >
               <CheckCircle size={24} />
               Accept Succession Responsibility
@@ -234,7 +250,8 @@ export default function SuccessorInvitation({ params }: { params: { token: strin
 
             <button
               onClick={() => setShowDeclineModal(true)}
-              className="px-6 py-4 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-semibold text-lg transition-colors flex items-center justify-center gap-2"
+              disabled={processing}
+              className="px-6 py-4 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed font-semibold text-lg transition-colors flex items-center justify-center gap-2"
             >
               <XCircle size={24} />
               Decline Invitation
@@ -247,6 +264,7 @@ export default function SuccessorInvitation({ params }: { params: { token: strin
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto p-8">
               <h2 className="text-2xl font-bold mb-4">Successor Acceptance Declaration</h2>
+              <p className="text-sm text-gray-600 mb-4">Effective Date: April 25, 2026 | Provider: Cairn Zero</p>
               
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 mb-6 max-h-96 overflow-y-auto">
                 <div className="flex flex-col gap-4 text-sm">
@@ -271,18 +289,28 @@ export default function SuccessorInvitation({ params }: { params: { token: strin
                   </div>
 
                   <div>
-                    <p className="font-semibold mb-2">5. Revocation Rights</p>
+                    <p className="font-semibold mb-2">5. Notification of Activation</p>
+                    <p className="text-gray-700">I understand that my access is monitored and that the Founder (or their estate) may be notified upon the activation of my succession credentials.</p>
+                  </div>
+
+                  <div>
+                    <p className="font-semibold mb-2">6. Zero-Knowledge and Sovereignty Disclosure</p>
+                    <p className="text-gray-700">I understand that Cairn Zero is a "Certainty-Only" provider and does not store passwords or provide recovery services. If I lose my credentials after a Succession Event, the data may be permanently lost.</p>
+                  </div>
+
+                  <div>
+                    <p className="font-semibold mb-2">7. Revocation Rights</p>
                     <p className="text-gray-700">I acknowledge that the Founder retains the absolute right to revoke my successor status at any time without prior notice.</p>
                   </div>
 
                   <div>
-                    <p className="font-semibold mb-2">6. Limitation of Liability</p>
-                    <p className="text-gray-700">I agree to indemnify and hold harmless Cairn Zero from any and all claims, losses, or damages resulting from my handling of the Archive assets.</p>
+                    <p className="font-semibold mb-2">8. Limitation of Liability</p>
+                    <p className="text-gray-700">I agree to indemnify and hold harmless Cairn Zero from any and all claims, losses, or damages resulting from my handling of the Archive assets. Cairn Zero provides the bridge; the Successor and Founder are solely responsible for the traffic crossing it.</p>
                   </div>
                 </div>
               </div>
 
-              <div className="mb-6 bg-white border-2 border-gray-300 rounded-lg p-4">
+              <div className="mb-6 bg-white border-2 border-gray-300 rounded-lg p-4 flex flex-col gap-3">
                 <label className="flex items-start gap-3 cursor-pointer">
                   <input
                     type="checkbox"
@@ -291,7 +319,19 @@ export default function SuccessorInvitation({ params }: { params: { token: strin
                     className="mt-1 w-5 h-5 flex-shrink-0"
                   />
                   <span className="text-sm font-medium">
-                    I have read the Successor Acceptance Declaration and agree to the responsibilities of being a designated Successor. I understand that Cairn Zero has no access to this data and that I am now a critical link in the Sovereignty Chain.
+                    I have read the Successor Acceptance Declaration and agree to the responsibilities of being a designated Successor.
+                  </span>
+                </label>
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={acceptedTerms}
+                    onChange={(e) => setAcceptedTerms(e.target.checked)}
+                    className="mt-1 w-5 h-5 flex-shrink-0"
+                    disabled
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    I understand that Cairn Zero has no access to this data and that I am now a critical link in the Sovereignty Chain.
                   </span>
                 </label>
               </div>
@@ -302,7 +342,8 @@ export default function SuccessorInvitation({ params }: { params: { token: strin
                     setShowAcceptModal(false)
                     setAcceptedTerms(false)
                   }}
-                  className="flex-1 px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold"
+                  disabled={processing}
+                  className="flex-1 px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 font-semibold"
                 >
                   Cancel
                 </button>
@@ -323,6 +364,7 @@ export default function SuccessorInvitation({ params }: { params: { token: strin
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto p-8">
               <h2 className="text-2xl font-bold mb-4">Successor Declination Agreement</h2>
+              <p className="text-sm text-gray-600 mb-4">Document ID: SDA-2026-CZ | Effective Date: April 25, 2026</p>
               
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 mb-6 max-h-96 overflow-y-auto">
                 <div className="flex flex-col gap-4 text-sm">
@@ -332,23 +374,28 @@ export default function SuccessorInvitation({ params }: { params: { token: strin
                   </div>
 
                   <div>
-                    <p className="font-semibold mb-2">2. Immediate Invalidation</p>
-                    <p className="text-gray-700">All invitation links, tokens, and access credentials are immediately and permanently revoked.</p>
+                    <p className="font-semibold mb-2">2. Revocation of Access and Credentials</p>
+                    <p className="text-gray-700">All invitation links, tokens, and access credentials are immediately and permanently revoked. Your profile will be purged from the Succession Bridge logic.</p>
                   </div>
 
                   <div>
-                    <p className="font-semibold mb-2">3. Founder Notification</p>
-                    <p className="text-gray-700">The founder will be immediately notified of your declination to ensure they can appoint an alternative successor.</p>
+                    <p className="font-semibold mb-2">3. Founder Notification / Succession Gap</p>
+                    <p className="text-gray-700">The founder will be immediately notified of your declination to ensure they can appoint an alternative successor and maintain business continuity.</p>
                   </div>
 
                   <div>
-                    <p className="font-semibold mb-2">4. Confidentiality</p>
-                    <p className="text-gray-700">If you became aware of any proprietary information during this process, you agree to maintain strict confidentiality.</p>
+                    <p className="font-semibold mb-2">4. Data Privacy; Confidentiality and Non-Disclosure</p>
+                    <p className="text-gray-700">No sensitive Subscriber data was exposed to you. If you became aware of any proprietary information during this process, you agree to maintain strict confidentiality.</p>
                   </div>
 
                   <div>
-                    <p className="font-semibold mb-2">5. No Data Access</p>
-                    <p className="text-gray-700">You confirm that no sensitive founder data was exposed to you and will not be accessed.</p>
+                    <p className="font-semibold mb-2">5. Limitation of Liability</p>
+                    <p className="text-gray-700">Cairn Zero operates under a "Zero-Knowledge Sovereignty" model and holds no liability for any "Succession Gap" created by this declination.</p>
+                  </div>
+
+                  <div>
+                    <p className="font-semibold mb-2">6. Finality of Declination</p>
+                    <p className="text-gray-700">This declination is final. Should you wish to serve as a Successor in the future, a new invitation must be initiated by the Subscriber.</p>
                   </div>
                 </div>
               </div>
@@ -362,7 +409,8 @@ export default function SuccessorInvitation({ params }: { params: { token: strin
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowDeclineModal(false)}
-                  className="flex-1 px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold"
+                  disabled={processing}
+                  className="flex-1 px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 font-semibold"
                 >
                   Go Back
                 </button>
