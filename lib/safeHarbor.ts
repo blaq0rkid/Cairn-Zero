@@ -22,6 +22,7 @@ export interface Successor {
   invitation_sent_at: string | null
   notified_at: string | null
   accessed_at: string | null
+  digital_attestation_signed_at: string | null
   created_at: string
   updated_at: string
 }
@@ -73,6 +74,21 @@ export function calculateSafeHarborStatus(
     }
   }
 
+  // Check if at least one successor has accepted AND signed attestation
+  const hasActiveSuccessor = successors.some(s => 
+    s.status === 'active' && 
+    s.accessed_at !== null && 
+    s.digital_attestation_signed_at !== null
+  )
+
+  if (!hasActiveSuccessor) {
+    return {
+      status: 'PENDING',
+      reason: 'No successor has completed acceptance and attestation',
+      lastChecked: new Date()
+    }
+  }
+
   if (!successionPlaybook || !successionPlaybook.is_complete) {
     return {
       status: 'VOID',
@@ -101,8 +117,6 @@ export function calculateSafeHarborStatus(
 
   // Check subscription status
   if (subscriptionStatus !== 'CURRENT') {
-    // Note: During 90-day Suspension Grace, Safe Harbor is NOT Active
-    // but vaults remain protected (Section 4.2)
     return {
       status: 'SUSPENDED',
       reason: 'SUBSCRIPTION_DELINQUENT',
@@ -127,7 +141,7 @@ export function calculateSafeHarborStatus(
 
   // ACTIVE: All conditions met (Section 6)
   if (
-    successors.length > 0 &&
+    hasActiveSuccessor &&
     successionPlaybook.is_complete &&
     subscriptionStatus === 'CURRENT' &&
     separationAttestation?.is_signed &&
