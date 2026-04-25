@@ -3,7 +3,8 @@ import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
-// Set to true for sandbox testing without hardware keys
+// TESTING MODE - Bypass hardware signature requirement
+// Set to false when YubiKeys are in production
 const TESTING_MODE = true
 
 export async function POST(request: Request) {
@@ -12,6 +13,7 @@ export async function POST(request: Request) {
   const { data: { session } } = await supabase.auth.getSession()
   
   if (!session) {
+    console.error('❌ No session found')
     return NextResponse.json({ 
       error: 'Unauthorized'
     }, { status: 401 })
@@ -26,6 +28,7 @@ export async function POST(request: Request) {
     hardwareSignature = body.hardwareSignature || null
     
     if (!successorId) {
+      console.error('❌ Missing successorId')
       return NextResponse.json({ 
         error: 'successorId is required'
       }, { status: 400 })
@@ -33,8 +36,10 @@ export async function POST(request: Request) {
 
     // Production mode requires hardware signature
     if (!TESTING_MODE && !hardwareSignature) {
+      console.error('❌ Hardware signature required but not provided')
       return NextResponse.json({ 
-        error: 'Hardware signature required in production mode'
+        error: 'Hardware signature required',
+        message: 'Physical hardware key verification is required in production mode'
       }, { status: 403 })
     }
 
@@ -43,6 +48,7 @@ export async function POST(request: Request) {
     }
 
   } catch (error) {
+    console.error('❌ Invalid request body:', error)
     return NextResponse.json({ 
       error: 'Invalid request body'
     }, { status: 400 })
@@ -58,55 +64,54 @@ export async function POST(request: Request) {
       .single()
 
     if (fetchError || !existingSuccessor) {
-      console.error('Successor lookup error:', fetchError)
+      console.error('❌ Successor lookup error:', fetchError)
       return NextResponse.json({ 
         error: 'Successor not found',
+        message: 'This successor does not exist or does not belong to you',
         details: fetchError?.message
       }, { status: 404 })
     }
 
-    // Update successor to revoked status
-    const { error: updateError } = await supabase
+    console.log(`🔍 Found successor: ${existingSuccessor.email} (Slot ${existingSuccessor.sequence_order})`)
+
+    // Delete the successor record completely
+    const { error: deleteError } = await supabase
       .from('successors')
-      .update({ 
-        status: 'revoked',
-        invitation_token: null,
-        accessed_at: null,
-        notified_at: null,
-        cairn_device_id: null
-      })
+      .delete()
       .eq('id', successorId)
       .eq('founder_id', session.user.id)
 
-    if (updateError) {
-      console.error('Database update error:', updateError)
+    if (deleteError) {
+      console.error('❌ Database delete error:', deleteError)
       return NextResponse.json({ 
-        error: 'Database update failed',
-        details: updateError.message,
-        code: updateError.code
+        error: 'Database error',
+        message: 'Failed to delete successor record',
+        details: deleteError.message,
+        code: deleteError.code
       }, { status: 500 })
     }
 
-    console.log(`✅ Revoked successor: ${existingSuccessor.email} (Slot ${existingSuccessor.sequence_order})`)
+    console.log(`✅ Successfully deleted successor: ${existingSuccessor.email} from Slot ${existingSuccessor.sequence_order}`)
     
     if (TESTING_MODE) {
-      console.log('⚠️ TESTING MODE: Completed without hardware verification')
+      console.log('⚠️ TESTING MODE: Deletion completed without hardware verification')
     }
     
     return NextResponse.json({ 
       success: true,
-      message: `Revoked ${existingSuccessor.full_name || existingSuccessor.email}`,
+      message: `Successfully removed ${existingSuccessor.full_name || existingSuccessor.email} from Slot ${existingSuccessor.sequence_order}`,
       testingMode: TESTING_MODE,
-      revokedSuccessor: {
+      deletedSuccessor: {
         id: successorId,
         email: existingSuccessor.email,
         slot: existingSuccessor.sequence_order
       }
     })
   } catch (error: any) {
-    console.error('Unexpected revocation error:', error)
+    console.error('❌ Unexpected error during deletion:', error)
     return NextResponse.json({ 
-      error: 'Revocation failed',
+      error: 'Deletion failed',
+      message: 'An unexpected error occurred',
       details: error.message
     }, { status: 500 })
   }
