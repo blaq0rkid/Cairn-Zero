@@ -13,6 +13,7 @@ export default function SuccessorDashboard() {
   const supabase = createClientComponentClient()
   const searchParams = useSearchParams()
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [successorData, setSuccessorData] = useState<any>(null)
   const [founderData, setFounderData] = useState<any>(null)
   const [accessKey, setAccessKey] = useState('')
@@ -25,35 +26,74 @@ export default function SuccessorDashboard() {
 
   useEffect(() => {
     const fetchSuccessorInfo = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      
-      if (!user) {
-        window.location.href = '/login'
-        return
+      try {
+        console.log('🔍 Fetching user session...')
+        const { data: { user }, error: userError } = await supabase.auth.getUser()
+        
+        if (userError) {
+          console.error('❌ Auth error:', userError)
+          setError('Authentication error. Please sign in again.')
+          setLoading(false)
+          return
+        }
+
+        if (!user) {
+          console.log('❌ No authenticated user found')
+          window.location.href = '/login'
+          return
+        }
+
+        console.log('✅ User authenticated:', user.email)
+
+        // Find successor record for this user
+        console.log('🔍 Looking for successor record with email:', user.email)
+        const { data: successor, error: successorError } = await supabase
+          .from('successors')
+          .select('*, profiles!successors_founder_id_fkey(email, created_at)')
+          .eq('email', user.email)
+          .single()
+
+        if (successorError) {
+          console.error('❌ Successor lookup error:', successorError)
+          setError('You are not registered as a successor. Please check your invitation link or contact the founder.')
+          setLoading(false)
+          return
+        }
+
+        if (!successor) {
+          console.log('❌ No successor record found')
+          setError('No successor record found for your account.')
+          setLoading(false)
+          return
+        }
+
+        console.log('✅ Successor record found:', successor)
+
+        // Check status
+        if (successor.status !== 'active') {
+          console.log('⚠️ Successor status is:', successor.status)
+          setError(`Your successor status is "${successor.status}". Please accept your invitation first.`)
+          setLoading(false)
+          return
+        }
+
+        // Check if legal terms were accepted
+        if (!successor.legal_accepted_at) {
+          console.log('⚠️ Legal terms not accepted')
+          setError('You must accept the Successor Revocation Protocol before accessing this dashboard.')
+          setLoading(false)
+          return
+        }
+
+        console.log('✅ All checks passed, loading dashboard')
+        setSuccessorData(successor)
+        setFounderData(successor.profiles)
+        setLoading(false)
+      } catch (err: any) {
+        console.error('❌ Unexpected error:', err)
+        setError(`An unexpected error occurred: ${err.message}`)
+        setLoading(false)
       }
-
-      // Find successor record for this user
-      const { data: successor, error } = await supabase
-        .from('successors')
-        .select('*, profiles!successors_founder_id_fkey(email, created_at)')
-        .eq('email', user.email)
-        .eq('status', 'active')
-        .single()
-
-      if (error || !successor) {
-        console.error('Not a valid successor:', error)
-        return
-      }
-
-      // Check if legal terms were accepted
-      if (!successor.legal_accepted_at) {
-        alert('You must accept the Successor Revocation Protocol before accessing this dashboard.')
-        return
-      }
-
-      setSuccessorData(successor)
-      setFounderData(successor.profiles)
-      setLoading(false)
     }
 
     fetchSuccessorInfo()
@@ -64,8 +104,6 @@ export default function SuccessorDashboard() {
     setValidationError('')
     
     const trimmedKey = accessKey.trim()
-    
-    // Normalize to uppercase for validation
     const normalizedKey = trimmedKey.toUpperCase()
     
     // Sandbox: Accept any key starting with "CZ-"
@@ -81,7 +119,6 @@ export default function SuccessorDashboard() {
     }
     
     // Production: Validate against cairn_devices table
-    // TODO: Implement real validation against encrypted founder data
     setValidationError('Invalid access key. Please verify and try again.')
   }
 
@@ -91,6 +128,33 @@ export default function SuccessorDashboard() {
         <div className="text-center">
           <Shield className="mx-auto mb-4 text-blue-600 animate-pulse" size={48} />
           <p className="text-gray-600">Loading successor dashboard...</p>
+          <p className="text-xs text-gray-400 mt-2">Checking your credentials</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+        <div className="max-w-md bg-red-50 border-2 border-red-200 rounded-lg p-8 text-center">
+          <AlertTriangle className="mx-auto mb-4 text-red-600" size={64} />
+          <h2 className="text-2xl font-bold text-red-900 mb-3">Access Error</h2>
+          <p className="text-red-700 mb-6">{error}</p>
+          <div className="flex flex-col gap-3">
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+            >
+              Retry
+            </button>
+            <button
+              onClick={() => window.location.href = '/login'}
+              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+            >
+              Sign In Again
+            </button>
+          </div>
         </div>
       </div>
     )
@@ -170,7 +234,7 @@ export default function SuccessorDashboard() {
               </div>
             </div>
 
-            <form onSubmit={handleAccessKeySubmit} className="space-y-4">
+            <form onSubmit={handleAccessKeySubmit} className="flex flex-col gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Cairn Access Key
@@ -213,7 +277,7 @@ export default function SuccessorDashboard() {
             </form>
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="flex flex-col gap-6">
             <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4 flex items-center gap-3">
               <CheckCircle className="text-green-600" size={24} />
               <div>
@@ -234,13 +298,13 @@ export default function SuccessorDashboard() {
                 </p>
               </div>
 
-              <div className="space-y-4">
+              <div className="flex flex-col gap-4">
                 <div className="border-2 border-gray-200 rounded-lg p-4">
                   <h3 className="font-bold mb-3 flex items-center gap-2">
                     <Shield className="text-blue-600" size={20} />
                     Succession Duties
                   </h3>
-                  <ul className="list-disc list-inside space-y-2 text-gray-700 text-sm">
+                  <ul className="list-disc list-inside flex flex-col gap-2 text-gray-700 text-sm">
                     <li>Access company email accounts using provided credentials</li>
                     <li>Notify key business contacts of succession event</li>
                     <li>Transfer domain registrations to designated party</li>
@@ -255,7 +319,7 @@ export default function SuccessorDashboard() {
                     Encrypted Data Vaults
                   </h3>
                   <p className="text-sm text-gray-600 mb-3">The following data vaults are available for decryption:</p>
-                  <div className="space-y-2">
+                  <div className="flex flex-col gap-2">
                     <div className="flex items-center justify-between bg-gray-50 p-3 rounded border border-gray-200">
                       <span className="text-sm font-medium">Business Credentials Vault</span>
                       <button className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors">
