@@ -7,40 +7,40 @@ export async function middleware(request: NextRequest) {
   const res = NextResponse.next()
   const supabase = createMiddlewareClient({ req: request, res })
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
-
   const path = request.nextUrl.pathname
 
-  // Public routes that don't require authentication
+  // Public routes - no authentication required
   const publicPaths = [
-    '/login', 
-    '/signup', 
+    '/',
+    '/login',
+    '/signup',
     '/successor/login',
-    '/auth/callback', 
     '/successor/accept',
-    '/', 
-    '/pricing', 
-    '/faq', 
-    '/terms', 
-    '/privacy', 
-    '/guidepost', 
-    '/msa', 
-    '/succession-playbook', 
-    '/thank-you', 
+    '/successor/declined',
+    '/auth/callback',
+    '/pricing',
+    '/faq',
+    '/terms',
+    '/privacy',
+    '/guidepost',
+    '/msa',
+    '/succession-playbook',
+    '/thank-you',
     '/success'
   ]
+
   const isPublicPath = publicPaths.some(publicPath => 
-    path === publicPath || path.startsWith('/guidepost/')
+    path === publicPath || path.startsWith('/guidepost/') || path.startsWith('/successor/accept/')
   )
 
-  // Allow public paths
   if (isPublicPath) {
     return res
   }
 
-  // If not authenticated and trying to access protected route
+  // Get session
+  const { data: { session } } = await supabase.auth.getSession()
+
+  // Protect authenticated routes
   if (!session) {
     if (path.startsWith('/successor')) {
       return NextResponse.redirect(new URL('/successor/login', request.url))
@@ -48,26 +48,42 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // User is authenticated - check their role
+  // Role-based routing for authenticated users
   if (session) {
     // Check if user is a successor
     const { data: successor } = await supabase
       .from('successors')
-      .select('id')
+      .select('id, status, legal_accepted_at')
       .eq('email', session.user.email)
       .single()
 
-    // Role-based routing
     if (successor) {
-      // User is a successor
+      // User is a SUCCESSOR
+      console.log('🔵 Successor detected:', session.user.email)
+      
+      // Prevent successors from accessing founder routes
       if (path.startsWith('/dashboard') || path.startsWith('/founder')) {
-        // Successor trying to access founder routes - redirect to successor portal
+        console.log('⚠️ Successor attempted to access founder route, redirecting')
         return NextResponse.redirect(new URL('/successor', request.url))
       }
-    } else {
-      // User is a founder (not in successors table)
+
+      // Legal gating: Check if they've accepted legal terms
       if (path.startsWith('/successor') && !path.startsWith('/successor/accept')) {
-        // Founder trying to access successor routes - redirect to founder dashboard
+        if (successor.status !== 'active' || !successor.legal_accepted_at) {
+          console.log('⚠️ Successor has not accepted legal terms')
+          // Allow access to login but nothing else
+          if (path !== '/successor/login') {
+            return NextResponse.redirect(new URL('/successor/login', request.url))
+          }
+        }
+      }
+    } else {
+      // User is a FOUNDER (not in successors table)
+      console.log('🔴 Founder detected:', session.user.email)
+      
+      // Prevent founders from accessing successor routes
+      if (path.startsWith('/successor') && !path.startsWith('/successor/accept')) {
+        console.log('⚠️ Founder attempted to access successor route, redirecting')
         return NextResponse.redirect(new URL('/dashboard', request.url))
       }
     }
