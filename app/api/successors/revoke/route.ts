@@ -1,3 +1,4 @@
+
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
@@ -21,7 +22,7 @@ export async function POST(request: Request) {
         status: 'revoked',
         invitation_token: null,
         accessed_at: null,
-        digital_attestation_signed_at: null,
+        notified_at: null,
         cairn_device_id: null
       })
       .eq('id', successorId)
