@@ -3,15 +3,15 @@
 
 import { useEffect, useState } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { Shield, Key, Clock, CheckCircle, Lock, Unlock, AlertTriangle } from 'lucide-react'
-import { useSearchParams } from 'next/navigation'
+import { Shield, Key, Clock, CheckCircle, Lock, Unlock, AlertTriangle, FileText } from 'lucide-react'
+import { useSearchParams, useRouter } from 'next/navigation'
 
-// SANDBOX MODE - Hardware key emulation
 const SANDBOX_MODE = process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_ENVIRONMENT === 'sandbox'
 
 export default function SuccessorDashboard() {
   const supabase = createClientComponentClient()
   const searchParams = useSearchParams()
+  const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [successorData, setSuccessorData] = useState<any>(null)
@@ -20,8 +20,8 @@ export default function SuccessorDashboard() {
   const [isUnlocked, setIsUnlocked] = useState(false)
   const [showWelcome, setShowWelcome] = useState(searchParams?.get('welcome') === 'true')
   const [validationError, setValidationError] = useState('')
+  const [showLegalGate, setShowLegalGate] = useState(false)
   
-  // Sandbox: Simulate archive key always inserted
   const [isArchiveKeyInserted] = useState(SANDBOX_MODE ? true : false)
 
   useEffect(() => {
@@ -30,46 +30,38 @@ export default function SuccessorDashboard() {
         console.log('🔍 Fetching user session...')
         const { data: { user }, error: userError } = await supabase.auth.getUser()
         
-        if (userError) {
-          console.error('❌ Auth error:', userError)
-          setError('Authentication error. Please sign in again.')
-          setLoading(false)
-          return
-        }
-
-        if (!user) {
-          console.log('❌ No authenticated user found')
-          window.location.href = '/login'
+        if (userError || !user) {
+          console.log('❌ No authenticated user')
+          router.push('/successor/login')
           return
         }
 
         console.log('✅ User authenticated:', user.email)
 
-        // Find successor record for this user
-        console.log('🔍 Looking for successor record with email:', user.email)
+        // Find successor record
         const { data: successor, error: successorError } = await supabase
           .from('successors')
-          .select('*, profiles!successors_founder_id_fkey(email, created_at)')
+          .select('*, profiles!successors_founder_id_fkey(email, full_name)')
           .eq('email', user.email)
           .single()
 
-        if (successorError) {
-          console.error('❌ Successor lookup error:', successorError)
-          setError('You are not registered as a successor. Please check your invitation link or contact the founder.')
-          setLoading(false)
-          return
-        }
-
-        if (!successor) {
-          console.log('❌ No successor record found')
-          setError('No successor record found for your account.')
+        if (successorError || !successor) {
+          console.error('❌ Not a successor:', successorError)
+          setError('You are not registered as a successor.')
           setLoading(false)
           return
         }
 
         console.log('✅ Successor record found:', successor)
 
-        // Check status
+        // CRITICAL: Legal gating check
+        if (!successor.legal_accepted_at) {
+          console.log('🚨 LEGAL GATE TRIGGERED: No legal acceptance timestamp')
+          setShowLegalGate(true)
+          setLoading(false)
+          return
+        }
+
         if (successor.status !== 'active') {
           console.log('⚠️ Successor status is:', successor.status)
           setError(`Your successor status is "${successor.status}". Please accept your invitation first.`)
@@ -77,15 +69,7 @@ export default function SuccessorDashboard() {
           return
         }
 
-        // Check if legal terms were accepted
-        if (!successor.legal_accepted_at) {
-          console.log('⚠️ Legal terms not accepted')
-          setError('You must accept the Successor Revocation Protocol before accessing this dashboard.')
-          setLoading(false)
-          return
-        }
-
-        console.log('✅ All checks passed, loading dashboard')
+        console.log('✅ Legal gate passed, loading dashboard')
         setSuccessorData(successor)
         setFounderData(successor.profiles)
         setLoading(false)
@@ -106,9 +90,9 @@ export default function SuccessorDashboard() {
     const trimmedKey = accessKey.trim()
     const normalizedKey = trimmedKey.toUpperCase()
     
-    // Sandbox: Accept any key starting with "CZ-"
+    // Sandbox: Accept CZ-2026 or any CZ- prefix
     if (SANDBOX_MODE) {
-      if (normalizedKey.startsWith('CZ-')) {
+      if (normalizedKey === 'CZ-2026' || normalizedKey.startsWith('CZ-')) {
         console.log('✅ Sandbox mode: Access key validated -', trimmedKey)
         setIsUnlocked(true)
         return
@@ -118,8 +102,57 @@ export default function SuccessorDashboard() {
       }
     }
     
-    // Production: Validate against cairn_devices table
     setValidationError('Invalid access key. Please verify and try again.')
+  }
+
+  // LEGAL GATE: Block all dashboard access until legal terms accepted
+  if (showLegalGate) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="max-w-2xl bg-white rounded-lg shadow-lg p-8">
+          <div className="text-center mb-6">
+            <FileText className="mx-auto mb-4 text-red-600" size={64} />
+            <h1 className="text-3xl font-bold mb-2 text-red-900">Legal Gateway Required</h1>
+            <p className="text-gray-600">You must accept the Successor Acceptance Declaration before accessing this portal.</p>
+          </div>
+
+          <div className="bg-red-50 border-2 border-red-200 rounded-lg p-6 mb-6">
+            <p className="text-sm text-red-800 font-semibold mb-3">Access Denied: Missing Legal Acceptance</p>
+            <p className="text-sm text-gray-700">
+              In accordance with Zero-Knowledge Sovereignty principles, you must formally accept the legal responsibilities 
+              of being a successor before any technical systems or data can be accessed.
+            </p>
+          </div>
+
+          <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 mb-6">
+            <p className="text-sm text-gray-700">
+              <strong>Next Steps:</strong>
+            </p>
+            <ol className="list-decimal list-inside text-sm text-gray-700 mt-2 flex flex-col gap-1">
+              <li>Check your email for the original invitation link</li>
+              <li>Click the invitation link to view the legal declaration</li>
+              <li>Accept the terms to activate your successor status</li>
+              <li>Return here to access the dashboard</li>
+            </ol>
+          </div>
+
+          <div className="flex gap-3">
+            <button
+              onClick={() => router.push('/successor/login')}
+              className="flex-1 px-4 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-semibold"
+            >
+              Back to Login
+            </button>
+            <button
+              onClick={() => supabase.auth.signOut().then(() => router.push('/'))}
+              className="flex-1 px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold"
+            >
+              Sign Out
+            </button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   if (loading) {
@@ -128,7 +161,6 @@ export default function SuccessorDashboard() {
         <div className="text-center">
           <Shield className="mx-auto mb-4 text-blue-600 animate-pulse" size={48} />
           <p className="text-gray-600">Loading successor dashboard...</p>
-          <p className="text-xs text-gray-400 mt-2">Checking your credentials</p>
         </div>
       </div>
     )
@@ -149,10 +181,10 @@ export default function SuccessorDashboard() {
               Retry
             </button>
             <button
-              onClick={() => window.location.href = '/login'}
+              onClick={() => router.push('/successor/login')}
               className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
             >
-              Sign In Again
+              Back to Login
             </button>
           </div>
         </div>
@@ -255,7 +287,7 @@ export default function SuccessorDashboard() {
                 )}
                 {SANDBOX_MODE && (
                   <p className="text-xs text-blue-600 mt-2">
-                    🧪 Sandbox Mode: Any key starting with "CZ-" will unlock (e.g., CZ-2026)
+                    🧪 Sandbox Mode: Enter "CZ-2026" to unlock dashboard
                   </p>
                 )}
                 {validationError && (
