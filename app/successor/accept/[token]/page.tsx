@@ -15,6 +15,7 @@ export default function AcceptSuccessionPage({ params }: { params: { token: stri
   const [founder, setFounder] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
   const [accepted, setAccepted] = useState(false)
+  const [agreedToTerms, setAgreedToTerms] = useState(false)
 
   useEffect(() => {
     const fetchSuccessorDetails = async () => {
@@ -31,7 +32,7 @@ export default function AcceptSuccessionPage({ params }: { params: { token: stri
           return
         }
 
-        if (successorData.status === 'active') {
+        if (successorData.status === 'active' && successorData.digital_attestation_signed_at) {
           setAccepted(true)
         }
 
@@ -48,15 +49,22 @@ export default function AcceptSuccessionPage({ params }: { params: { token: stri
   }, [params.token, supabase])
 
   const handleAccept = async () => {
+    if (!agreedToTerms) {
+      setError('You must agree to the terms before accepting')
+      return
+    }
+
     setAccepting(true)
     setError(null)
 
     try {
+      const now = new Date().toISOString()
       const { error: updateError } = await supabase
         .from('successors')
         .update({ 
           status: 'active',
-          accessed_at: new Date().toISOString()
+          accessed_at: now,
+          digital_attestation_signed_at: now
         })
         .eq('invitation_token', params.token)
 
@@ -86,7 +94,7 @@ export default function AcceptSuccessionPage({ params }: { params: { token: stri
             <CheckCircle className="mx-auto text-green-600 mb-4" size={64} />
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Designation Confirmed</h1>
             <p className="text-gray-600 mb-6">
-              You have successfully accepted your role as a successor.
+              You have successfully accepted your role as a successor and signed the digital attestation.
             </p>
             <p className="text-sm text-gray-500">
               You will receive notifications according to the Heartbeat protocol configured by the Designator.
@@ -97,7 +105,7 @@ export default function AcceptSuccessionPage({ params }: { params: { token: stri
     )
   }
 
-  if (error) {
+  if (error && !successor) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="max-w-2xl w-full bg-white rounded-lg shadow-lg p-8">
@@ -130,7 +138,7 @@ export default function AcceptSuccessionPage({ params }: { params: { token: stri
             <h2 className="text-2xl font-bold text-gray-900 mb-4">Succession Notification Disclaimers and Terms</h2>
             <p className="text-sm text-gray-600 mb-6">Effective Date: April 24, 2026 | Company: Cairn Zero</p>
 
-            <div className="space-y-6 text-gray-700">
+            <div className="space-y-6 text-gray-700 max-h-96 overflow-y-auto border border-gray-200 rounded p-4 mb-6">
               <section>
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">1. Nature of Designation</h3>
                 <p>
@@ -158,13 +166,13 @@ export default function AcceptSuccessionPage({ params }: { params: { token: stri
               </section>
 
               <section>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">4. Key Acknowledgments</h3>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">4. Fiduciary Duty and Legal Responsibility</h3>
+                <p className="mb-2">By accepting this designation, you acknowledge and agree to:</p>
                 <ul className="list-disc list-inside space-y-2 ml-4">
-                  <li><strong>NO LEGAL OR FIDUCIARY ADVICE:</strong> Cairn Zero is a technical service provider. This notification does not constitute legal, financial, or estate planning advice.</li>
-                  <li><strong>ZERO-KNOWLEDGE SOVEREIGNTY:</strong> Cairn Zero has zero access to the underlying data. Access is granted solely through automated triggers set by the Founder.</li>
-                  <li><strong>ACCESS CONDITIONS:</strong> Access to the "keys to the kingdom" is strictly governed by the conditions (Heartbeat/7-Day Handoff) defined by the Founder.</li>
-                  <li><strong>CONFIDENTIALITY:</strong> This invitation is intended solely for the designated recipient. Unauthorized sharing of the acceptance link may compromise the security of the entity.</li>
-                  <li><strong>LIMITATION OF LIABILITY:</strong> Cairn Zero is not responsible for the content, validity, or accessibility of the data managed by the Founder.</li>
+                  <li><strong>Act in Good Faith:</strong> You will exercise reasonable care and act in the best interests of the Designator and their beneficiaries when accessing or managing the designated assets.</li>
+                  <li><strong>Confidentiality:</strong> You will maintain the confidentiality of all information accessed through this succession designation and will not disclose such information except as legally required or authorized by the Designator.</li>
+                  <li><strong>No Unauthorized Use:</strong> You will only access and use the designated assets for their intended succession purposes and not for personal gain or unauthorized third-party benefit.</li>
+                  <li><strong>Compliance:</strong> You will comply with all applicable laws and regulations in your jurisdiction when acting as a successor.</li>
                 </ul>
               </section>
 
@@ -186,19 +194,34 @@ export default function AcceptSuccessionPage({ params }: { params: { token: stri
               </section>
             </div>
 
-            <div className="mt-8 p-6 bg-yellow-50 border-2 border-yellow-400 rounded-lg">
-              <p className="text-gray-900 font-semibold mb-2">
-                By clicking "Accept Designation" below, you confirm that you have:
-              </p>
-              <ul className="list-disc list-inside space-y-1 text-gray-700 ml-4">
-                <li>Read and understood these Disclaimers and Terms</li>
-                <li>Agreed to the responsibilities outlined above</li>
-                <li>Acknowledged the Zero-Knowledge Sovereignty model</li>
-                <li>Understood the trigger mechanism and access conditions</li>
-              </ul>
+            <div className="mb-6 p-6 bg-yellow-50 border-2 border-yellow-400 rounded-lg">
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={agreedToTerms}
+                  onChange={(e) => setAgreedToTerms(e.target.checked)}
+                  className="mt-1 w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <span className="text-gray-900">
+                  <strong>I hereby acknowledge and agree that:</strong>
+                  <ul className="list-disc list-inside mt-2 space-y-1 text-sm">
+                    <li>I have read and understood these Disclaimers and Terms</li>
+                    <li>I agree to the fiduciary responsibilities outlined above</li>
+                    <li>I acknowledge the Zero-Knowledge Sovereignty model</li>
+                    <li>I understand the trigger mechanism and access conditions</li>
+                    <li>I will act in good faith and maintain confidentiality</li>
+                  </ul>
+                </span>
+              </label>
             </div>
 
-            <div className="mt-8 flex gap-4">
+            {error && (
+              <div className="mb-6 p-4 bg-red-50 text-red-800 rounded-lg border border-red-200">
+                {error}
+              </div>
+            )}
+
+            <div className="flex gap-4">
               <button
                 onClick={() => router.push('/')}
                 className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-semibold"
@@ -207,10 +230,10 @@ export default function AcceptSuccessionPage({ params }: { params: { token: stri
               </button>
               <button
                 onClick={handleAccept}
-                disabled={accepting}
+                disabled={accepting || !agreedToTerms}
                 className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {accepting ? 'Processing...' : 'Accept Designation'}
+                {accepting ? 'Processing...' : 'Accept & Sign Digital Attestation'}
               </button>
             </div>
           </div>
