@@ -17,7 +17,30 @@ export async function POST(request: Request) {
 
   const { successorEmail, successorName, founderEmail } = await request.json()
 
-  // Generate invitation token
+  // Validate required fields
+  if (!successorEmail || !successorName || !founderEmail) {
+    return NextResponse.json({ 
+      error: 'Missing required fields',
+      message: 'successorEmail, successorName, and founderEmail are required'
+    }, { status: 400 })
+  }
+
+  // Check if successor already has a pending invitation
+  const { data: existingSuccessor } = await supabase
+    .from('successors')
+    .select('id, invitation_token, notified_at')
+    .eq('email', successorEmail)
+    .eq('founder_id', session.user.id)
+    .single()
+
+  if (!existingSuccessor) {
+    return NextResponse.json({ 
+      error: 'Successor not found',
+      message: 'Please add the successor first before sending an invitation'
+    }, { status: 404 })
+  }
+
+  // Generate new invitation token (regenerate even if resending)
   const invitationToken = crypto.randomUUID()
   
   // Update successor record with token and notification timestamp
@@ -32,14 +55,19 @@ export async function POST(request: Request) {
 
   if (updateError) {
     console.error('Database update error:', updateError)
-    return NextResponse.json({ error: updateError.message }, { status: 500 })
+    return NextResponse.json({ 
+      error: 'Database error',
+      message: updateError.message 
+    }, { status: 500 })
   }
 
-  const acceptUrl = `${process.env.NEXT_PUBLIC_APP_URL}/successor/accept/${invitationToken}`
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  const acceptUrl = `${appUrl}/successor/accept/${invitationToken}`
+  const fromEmail = process.env.RESEND_FROM_EMAIL || 'noreply@mycairnzero.com'
 
   try {
     const { data, error } = await resend.emails.send({
-      from: `Cairn Zero <${process.env.RESEND_FROM_EMAIL}>`,
+      from: `Cairn Zero <${fromEmail}>`,
       to: successorEmail,
       subject: `${founderEmail} has designated you as a successor`,
       html: `
@@ -96,8 +124,8 @@ export async function POST(request: Request) {
             <p style="text-align: center; margin: 0;">
               <strong>Cairn Zero</strong><br>
               Certainty-Only. Zero-Knowledge Sovereignty.<br>
-              <a href="${process.env.NEXT_PUBLIC_APP_URL}/terms" style="color: #2563eb;">Terms of Service</a> | 
-              <a href="${process.env.NEXT_PUBLIC_APP_URL}/privacy" style="color: #2563eb;">Privacy Policy</a>
+              <a href="${appUrl}/terms" style="color: #2563eb;">Terms of Service</a> | 
+              <a href="${appUrl}/privacy" style="color: #2563eb;">Privacy Policy</a>
             </p>
           </div>
         </body>
@@ -106,14 +134,35 @@ export async function POST(request: Request) {
     })
 
     if (error) {
-      console.error('Resend API error:', error)
-      return NextResponse.json({ error: 'Failed to send invitation email', details: error }, { status: 500 })
+      console.error('Resend API error:', {
+        code: error.name,
+        message: error.message,
+        successorEmail,
+        fromEmail
+      })
+      return NextResponse.json({ 
+        error: 'Email sending failed',
+        details: error.message,
+        resendError: error.name
+      }, { status: 500 })
     }
 
-    console.log('Email sent successfully:', data)
-    return NextResponse.json({ success: true, emailId: data?.id })
+    console.log('Email sent successfully:', {
+      emailId: data?.id,
+      to: successorEmail,
+      from: fromEmail
+    })
+    
+    return NextResponse.json({ 
+      success: true, 
+      emailId: data?.id,
+      message: 'Invitation sent successfully'
+    })
   } catch (error: any) {
-    console.error('Email send error:', error)
-    return NextResponse.json({ error: 'Failed to send invitation email', details: error.message }, { status: 500 })
+    console.error('Unexpected email send error:', error)
+    return NextResponse.json({ 
+      error: 'Failed to send invitation email',
+      details: error.message 
+    }, { status: 500 })
   }
 }
