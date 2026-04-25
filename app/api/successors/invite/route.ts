@@ -20,24 +20,25 @@ export async function POST(request: Request) {
   // Generate invitation token
   const invitationToken = crypto.randomUUID()
   
-  // Update successor record with token and sent timestamp
+  // Update successor record with token and notification timestamp
   const { error: updateError } = await supabase
     .from('successors')
     .update({ 
       invitation_token: invitationToken,
-      invitation_sent_at: new Date().toISOString()
+      notified_at: new Date().toISOString()
     })
     .eq('email', successorEmail)
     .eq('founder_id', session.user.id)
 
   if (updateError) {
+    console.error('Database update error:', updateError)
     return NextResponse.json({ error: updateError.message }, { status: 500 })
   }
 
   const acceptUrl = `${process.env.NEXT_PUBLIC_APP_URL}/successor/accept/${invitationToken}`
 
   try {
-    await resend.emails.send({
+    const { data, error } = await resend.emails.send({
       from: 'Cairn Zero <noreply@mycairnzero.com>',
       to: successorEmail,
       subject: `${founderEmail} has designated you as a successor`,
@@ -104,9 +105,15 @@ export async function POST(request: Request) {
       `
     })
 
-    return NextResponse.json({ success: true })
+    if (error) {
+      console.error('Resend API error:', error)
+      return NextResponse.json({ error: 'Failed to send invitation email', details: error }, { status: 500 })
+    }
+
+    console.log('Email sent successfully:', data)
+    return NextResponse.json({ success: true, emailId: data?.id })
   } catch (error: any) {
     console.error('Email send error:', error)
-    return NextResponse.json({ error: 'Failed to send invitation email' }, { status: 500 })
+    return NextResponse.json({ error: 'Failed to send invitation email', details: error.message }, { status: 500 })
   }
 }
