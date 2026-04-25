@@ -46,6 +46,10 @@ export default function AddSuccessorModal({ userId, existingSuccessors, onClose,
     setError(null)
 
     try {
+      // Get current user email for the invitation
+      const { data: { user } } = await supabase.auth.getUser()
+      const founderEmail = user?.email || 'your account'
+
       // Insert successor record
       const { error: insertError } = await supabase
         .from('successors')
@@ -59,6 +63,30 @@ export default function AddSuccessorModal({ userId, existingSuccessors, onClose,
 
       if (insertError) throw insertError
 
+      console.log('✅ Successor added to database')
+
+      // Send invitation email
+      console.log('📧 Sending invitation email...')
+      const inviteResponse = await fetch('/api/successors/invite', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          successorEmail: email.trim().toLowerCase(),
+          successorName: fullName.trim(),
+          founderEmail: founderEmail
+        })
+      })
+
+      const inviteResult = await inviteResponse.json()
+
+      if (!inviteResponse.ok) {
+        console.error('❌ Invitation API error:', inviteResult)
+        throw new Error(inviteResult.error || 'Failed to send invitation email')
+      }
+
+      console.log('✅ Invitation sent successfully:', inviteResult)
       onSuccess()
     } catch (err: any) {
       console.error('Error adding successor:', err)
