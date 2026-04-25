@@ -2,241 +2,144 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { CheckCircle, AlertCircle, Loader } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Shield, AlertCircle } from 'lucide-react'
 
-export default function AcceptSuccessionPage({ params }: { params: { token: string } }) {
-  const router = useRouter()
+export default function AcceptInvitation({ params }: { params: { token: string } }) {
   const supabase = createClientComponentClient()
+  const router = useRouter()
   const [loading, setLoading] = useState(true)
-  const [accepting, setAccepting] = useState(false)
-  const [successor, setSuccessor] = useState<any>(null)
-  const [founder, setFounder] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
-  const [accepted, setAccepted] = useState(false)
-  const [agreedToTerms, setAgreedToTerms] = useState(false)
+  const [successorData, setSuccessorData] = useState<any>(null)
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
 
   useEffect(() => {
-    const fetchSuccessorDetails = async () => {
-      try {
-        const { data: successorData, error: successorError } = await supabase
-          .from('successors')
-          .select('*, founder:founder_id(email)')
-          .eq('invitation_token', params.token)
-          .single()
+    const validateToken = async () => {
+      const { data, error } = await supabase
+        .from('successors')
+        .select('*')
+        .eq('invitation_token', params.token)
+        .single()
 
-        if (successorError || !successorData) {
-          setError('Invalid or expired invitation link')
-          setLoading(false)
-          return
-        }
-
-        if (successorData.status === 'active' && successorData.digital_attestation_signed_at) {
-          setAccepted(true)
-        }
-
-        setSuccessor(successorData)
-        setFounder(successorData.founder)
-      } catch (err) {
-        setError('Failed to load invitation details')
-      } finally {
+      if (error || !data) {
+        setError('Invalid or expired invitation link')
         setLoading(false)
+        return
       }
+
+      setSuccessorData(data)
+      setLoading(false)
     }
 
-    fetchSuccessorDetails()
-  }, [params.token, supabase])
+    validateToken()
+  }, [params.token])
 
   const handleAccept = async () => {
-    if (!agreedToTerms) {
-      setError('You must agree to the terms before accepting')
+    if (!acceptedTerms) {
+      alert('Please accept the Successor Revocation Protocol terms to continue')
       return
     }
 
-    setAccepting(true)
-    setError(null)
-
     try {
-      const now = new Date().toISOString()
+      // Update successor status to active
       const { error: updateError } = await supabase
         .from('successors')
         .update({ 
           status: 'active',
-          accessed_at: now,
-          digital_attestation_signed_at: now
+          accessed_at: new Date().toISOString()
         })
         .eq('invitation_token', params.token)
 
       if (updateError) throw updateError
 
-      setAccepted(true)
+      alert('Invitation accepted! You are now an active successor.')
+      router.push('/successor')
     } catch (err: any) {
-      setError(err.message || 'Failed to accept designation')
-    } finally {
-      setAccepting(false)
+      setError(err.message)
     }
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <Loader className="animate-spin text-blue-600" size={48} />
-      </div>
-    )
-  }
-
-  if (accepted) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="max-w-2xl w-full bg-white rounded-lg shadow-lg p-8">
-          <div className="text-center">
-            <CheckCircle className="mx-auto text-green-600 mb-4" size={64} />
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Designation Confirmed</h1>
-            <p className="text-gray-600 mb-6">
-              You have successfully accepted your role as a successor and signed the digital attestation.
-            </p>
-            <p className="text-sm text-gray-500">
-              You will receive notifications according to the Heartbeat protocol configured by the Designator.
-            </p>
-          </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Shield className="mx-auto mb-4 text-blue-600" size={48} />
+          <p>Validating invitation...</p>
         </div>
       </div>
     )
   }
 
-  if (error && !successor) {
+  if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="max-w-2xl w-full bg-white rounded-lg shadow-lg p-8">
-          <div className="text-center">
-            <AlertCircle className="mx-auto text-red-600 mb-4" size={64} />
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Invalid Invitation</h1>
-            <p className="text-gray-600">{error}</p>
-          </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="max-w-md bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+          <AlertCircle className="mx-auto mb-4 text-red-600" size={48} />
+          <h2 className="text-xl font-bold text-red-900 mb-2">Invalid Invitation</h2>
+          <p className="text-red-700">{error}</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4">
-      <div className="max-w-4xl mx-auto">
-        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-          <div className="bg-gray-900 text-white p-6">
-            <h1 className="text-3xl font-bold">Succession Designation Notice</h1>
-            <p className="text-gray-300 mt-2">Cairn Zero - Zero-Knowledge Sovereignty Platform</p>
+    <div className="min-h-screen bg-gray-50 p-8">
+      <div className="max-w-2xl mx-auto">
+        <div className="bg-white rounded-lg shadow p-8">
+          <div className="text-center mb-6">
+            <Shield className="mx-auto mb-4 text-blue-600" size={64} />
+            <h1 className="text-3xl font-bold mb-2">Succession Designation</h1>
+            <p className="text-gray-600">You have been designated as a successor</p>
           </div>
 
-          <div className="p-8">
-            <div className="mb-8 p-4 bg-blue-50 border-l-4 border-blue-600 rounded">
-              <p className="text-gray-900">
-                <strong>{founder?.email || 'A Cairn Zero user'}</strong> has designated you, <strong>{successor?.full_name}</strong>, as Successor #{successor?.sequence_order}.
-              </p>
-            </div>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
+            <h2 className="font-bold mb-2">Designation Details:</h2>
+            <p><strong>Your Name:</strong> {successorData.full_name}</p>
+            <p><strong>Slot:</strong> #{successorData.sequence_order}</p>
+            <p><strong>Status:</strong> Pending Acceptance</p>
+          </div>
 
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Succession Notification Disclaimers and Terms</h2>
-            <p className="text-sm text-gray-600 mb-6">Effective Date: April 24, 2026 | Company: Cairn Zero</p>
-
-            <div className="space-y-6 text-gray-700 max-h-96 overflow-y-auto border border-gray-200 rounded p-4 mb-6">
-              <section>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">1. Nature of Designation</h3>
-                <p>
-                  By receiving this notification, you have been designated as a "Successor" by a primary account holder (the "Designator") within the Cairn Zero system. This designation is intended to ensure business continuity and digital asset accessibility in the event of the Designator's incapacity or unavailability. Acceptance of this role constitutes an agreement to the terms outlined herein and within the Cairn Zero Master Terms of Service.
-                </p>
-              </section>
-
-              <section>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">2. Zero-Knowledge Sovereignty and Data Privacy</h3>
-                <p className="mb-2">Cairn Zero operates under the "Certainty-Only" Principle of Zero-Knowledge Sovereignty:</p>
-                <ul className="list-disc list-inside space-y-2 ml-4">
-                  <li><strong>No Access:</strong> Cairn Zero does not possess, manage, or have the technical ability to view the contents of the Designator's secured data.</li>
-                  <li><strong>Encryption:</strong> All data is encrypted client-side. Cairn Zero facilitates the transfer of decryption keys or access protocols to the Successor only upon the fulfillment of specific "Heartbeat" triggers.</li>
-                  <li><strong>Sub-Processing:</strong> You acknowledge that Cairn Zero utilizes third-party sub-processors, including Resend, for the delivery of transactional notifications. Your contact information is used solely for the purpose of maintaining this succession bridge.</li>
-                </ul>
-              </section>
-
-              <section>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">3. The Trigger Mechanism (7-Day Handoff Rule)</h3>
-                <p className="mb-2">Access to the Designator's assets is governed by the Cairn Zero "Heartbeat" system:</p>
-                <ul className="list-disc list-inside space-y-2 ml-4">
-                  <li><strong>Activation:</strong> The transition of control to the Successor is triggered only after a sustained failure of the Designator to respond to system pings (the "Heartbeat").</li>
-                  <li><strong>Cooling-Off Period:</strong> Per the 7-Day Handoff Rule, the Designator maintains a final window to override the handoff. Cairn Zero is not liable for the timing of the handoff provided the automated triggers were executed according to the Designator's pre-set configurations.</li>
-                </ul>
-              </section>
-
-              <section>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">4. Fiduciary Duty and Legal Responsibility</h3>
-                <p className="mb-2">By accepting this designation, you acknowledge and agree to:</p>
-                <ul className="list-disc list-inside space-y-2 ml-4">
-                  <li><strong>Act in Good Faith:</strong> You will exercise reasonable care and act in the best interests of the Designator and their beneficiaries when accessing or managing the designated assets.</li>
-                  <li><strong>Confidentiality:</strong> You will maintain the confidentiality of all information accessed through this succession designation and will not disclose such information except as legally required or authorized by the Designator.</li>
-                  <li><strong>No Unauthorized Use:</strong> You will only access and use the designated assets for their intended succession purposes and not for personal gain or unauthorized third-party benefit.</li>
-                  <li><strong>Compliance:</strong> You will comply with all applicable laws and regulations in your jurisdiction when acting as a successor.</li>
-                </ul>
-              </section>
-
-              <section>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">5. Successor Responsibilities</h3>
-                <p className="mb-2">Upon accepting this designation, the Successor acknowledges that:</p>
-                <ul className="list-disc list-inside space-y-2 ml-4">
-                  <li><strong>Verification:</strong> They must maintain a valid and secure email address to receive system alerts.</li>
-                  <li><strong>Authority:</strong> They represent that they have the legal right or corporate authority to act upon the Designator's assets in accordance with applicable local laws.</li>
-                  <li><strong>Security:</strong> They are responsible for maintaining the security of their own Cairn Zero credentials to prevent unauthorized access during a handoff event.</li>
-                </ul>
-              </section>
-
-              <section>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">6. Termination of Designation</h3>
-                <p>
-                  The Designator may revoke the Successor's status at any time without prior notice, at which point all pending access tokens and invitation links shall become void. The Successor may also decline the designation at any time, which will trigger a notification to the Designator to select an alternative.
-                </p>
-              </section>
-            </div>
-
-            <div className="mb-6 p-6 bg-yellow-50 border-2 border-yellow-400 rounded-lg">
-              <label className="flex items-start gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={agreedToTerms}
-                  onChange={(e) => setAgreedToTerms(e.target.checked)}
-                  className="mt-1 w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                />
-                <span className="text-gray-900">
-                  <strong>I hereby acknowledge and agree that:</strong>
-                  <ul className="list-disc list-inside mt-2 space-y-1 text-sm">
-                    <li>I have read and understood these Disclaimers and Terms</li>
-                    <li>I agree to the fiduciary responsibilities outlined above</li>
-                    <li>I acknowledge the Zero-Knowledge Sovereignty model</li>
-                    <li>I understand the trigger mechanism and access conditions</li>
-                    <li>I will act in good faith and maintain confidentiality</li>
-                  </ul>
-                </span>
-              </label>
-            </div>
-
-            {error && (
-              <div className="mb-6 p-4 bg-red-50 text-red-800 rounded-lg border border-red-200">
-                {error}
-              </div>
-            )}
-
-            <div className="flex gap-4">
-              <button
-                onClick={() => router.push('/')}
-                className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-semibold"
-              >
-                Decline
-              </button>
-              <button
-                onClick={handleAccept}
-                disabled={accepting || !agreedToTerms}
-                className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {accepting ? 'Processing...' : 'Accept & Sign Digital Attestation'}
-              </button>
+          <div className="bg-yellow-50 border-l-4 border-yellow-500 p-6 mb-6">
+            <h3 className="font-bold mb-3">Successor Revocation Protocol</h3>
+            <div className="text-sm space-y-2 max-h-64 overflow-y-auto">
+              <p><strong>1. Role & Responsibilities:</strong> As a successor, you agree to act in good faith and follow the founder's documented instructions only upon verified trigger conditions.</p>
+              
+              <p><strong>2. No Premature Access:</strong> You acknowledge that accessing founder data before proper verification constitutes unauthorized access.</p>
+              
+              <p><strong>3. Revocation Rights:</strong> The founder retains the absolute right to revoke your designation at any time without cause.</p>
+              
+              <p><strong>4. Limited Liability:</strong> Cairn Zero is a technical service provider only and bears no liability for succession outcomes.</p>
+              
+              <p><strong>5. Data Protection:</strong> All founder data remains encrypted. You will only receive access credentials upon verified trigger conditions.</p>
+              
+              <p><strong>6. Waiting Period:</strong> Any "Request Access" action triggers a mandatory waiting period during which the founder is notified and can deny the request.</p>
+              
+              <p><strong>7. Zero-Knowledge Principle:</strong> Cairn Zero cannot decrypt, access, or provide the founder's data. You will receive decryption credentials only through the automated succession protocol.</p>
             </div>
           </div>
+
+          <div className="mb-6">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={acceptedTerms}
+                onChange={(e) => setAcceptedTerms(e.target.checked)}
+                className="mt-1"
+              />
+              <span className="text-sm">
+                I have read and agree to the Successor Revocation Protocol and understand my responsibilities as a designated successor.
+              </span>
+            </label>
+          </div>
+
+          <button
+            onClick={handleAccept}
+            disabled={!acceptedTerms}
+            className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+          >
+            Accept Designation
+          </button>
         </div>
       </div>
     </div>
