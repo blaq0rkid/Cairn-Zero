@@ -35,23 +35,24 @@ export async function POST(request: Request) {
   }
 
   try {
-    // First verify the successor belongs to this user
+    // Verify the successor exists and belongs to this user
     const { data: existingSuccessor, error: fetchError } = await supabase
       .from('successors')
-      .select('id, email, full_name')
+      .select('id, email, full_name, status')
       .eq('id', successorId)
       .eq('founder_id', session.user.id)
       .single()
 
     if (fetchError || !existingSuccessor) {
-      console.error('Successor not found:', fetchError)
+      console.error('Successor lookup error:', fetchError)
       return NextResponse.json({ 
         error: 'Not Found',
-        message: 'Successor not found or does not belong to you'
+        message: 'Successor not found or does not belong to you',
+        details: fetchError?.message
       }, { status: 404 })
     }
 
-    // Update successor status to revoked and clear sensitive data
+    // Update successor status to revoked and clear all data
     const { error: updateError } = await supabase
       .from('successors')
       .update({ 
@@ -69,21 +70,26 @@ export async function POST(request: Request) {
       return NextResponse.json({ 
         error: 'Database Error',
         message: 'Failed to update successor record',
-        details: updateError.message
+        details: updateError.message,
+        code: updateError.code
       }, { status: 500 })
     }
 
-    console.log(`Successfully revoked successor: ${existingSuccessor.email}`)
+    console.log(`Successfully revoked successor: ${existingSuccessor.email} (${successorId})`)
     
     return NextResponse.json({ 
       success: true,
-      message: `Successfully revoked ${existingSuccessor.full_name || existingSuccessor.email}`
+      message: `Successfully revoked ${existingSuccessor.full_name || existingSuccessor.email}`,
+      revokedSuccessor: {
+        id: successorId,
+        email: existingSuccessor.email
+      }
     })
   } catch (error: any) {
-    console.error('Revocation error:', error)
+    console.error('Unexpected revocation error:', error)
     return NextResponse.json({ 
       error: 'Internal Server Error',
-      message: 'An unexpected error occurred',
+      message: 'An unexpected error occurred during revocation',
       details: error.message
     }, { status: 500 })
   }
