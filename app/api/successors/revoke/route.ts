@@ -3,6 +3,9 @@ import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
+// Set to true for sandbox testing without hardware keys
+const TESTING_MODE = true
+
 export async function POST(request: Request) {
   const supabase = createRouteHandlerClient({ cookies })
   
@@ -10,35 +13,46 @@ export async function POST(request: Request) {
   
   if (!session) {
     return NextResponse.json({ 
-      error: 'Unauthorized',
-      message: 'You must be logged in to revoke a successor'
+      error: 'Unauthorized'
     }, { status: 401 })
   }
 
   let successorId: string
+  let hardwareSignature: string | null = null
   
   try {
     const body = await request.json()
     successorId = body.successorId
+    hardwareSignature = body.hardwareSignature || null
     
     if (!successorId) {
       return NextResponse.json({ 
-        error: 'Bad Request',
-        message: 'successorId is required'
+        error: 'successorId is required'
       }, { status: 400 })
     }
+
+    // Production mode requires hardware signature
+    if (!TESTING_MODE && !hardwareSignature) {
+      return NextResponse.json({ 
+        error: 'Hardware signature required in production mode'
+      }, { status: 403 })
+    }
+
+    if (TESTING_MODE && !hardwareSignature) {
+      console.log('⚠️ TESTING MODE: Bypassing hardware signature requirement')
+    }
+
   } catch (error) {
     return NextResponse.json({ 
-      error: 'Bad Request',
-      message: 'Invalid JSON in request body'
+      error: 'Invalid request body'
     }, { status: 400 })
   }
 
   try {
-    // Verify the successor exists and belongs to this user
+    // Verify successor exists and belongs to user
     const { data: existingSuccessor, error: fetchError } = await supabase
       .from('successors')
-      .select('id, email, full_name, status')
+      .select('id, email, full_name, status, sequence_order')
       .eq('id', successorId)
       .eq('founder_id', session.user.id)
       .single()
@@ -46,13 +60,12 @@ export async function POST(request: Request) {
     if (fetchError || !existingSuccessor) {
       console.error('Successor lookup error:', fetchError)
       return NextResponse.json({ 
-        error: 'Not Found',
-        message: 'Successor not found or does not belong to you',
+        error: 'Successor not found',
         details: fetchError?.message
       }, { status: 404 })
     }
 
-    // Update successor status to revoked and clear all data
+    // Update successor to revoked status
     const { error: updateError } = await supabase
       .from('successors')
       .update({ 
@@ -68,28 +81,32 @@ export async function POST(request: Request) {
     if (updateError) {
       console.error('Database update error:', updateError)
       return NextResponse.json({ 
-        error: 'Database Error',
-        message: 'Failed to update successor record',
+        error: 'Database update failed',
         details: updateError.message,
         code: updateError.code
       }, { status: 500 })
     }
 
-    console.log(`Successfully revoked successor: ${existingSuccessor.email} (${successorId})`)
+    console.log(`✅ Revoked successor: ${existingSuccessor.email} (Slot ${existingSuccessor.sequence_order})`)
+    
+    if (TESTING_MODE) {
+      console.log('⚠️ TESTING MODE: Completed without hardware verification')
+    }
     
     return NextResponse.json({ 
       success: true,
-      message: `Successfully revoked ${existingSuccessor.full_name || existingSuccessor.email}`,
+      message: `Revoked ${existingSuccessor.full_name || existingSuccessor.email}`,
+      testingMode: TESTING_MODE,
       revokedSuccessor: {
         id: successorId,
-        email: existingSuccessor.email
+        email: existingSuccessor.email,
+        slot: existingSuccessor.sequence_order
       }
     })
   } catch (error: any) {
     console.error('Unexpected revocation error:', error)
     return NextResponse.json({ 
-      error: 'Internal Server Error',
-      message: 'An unexpected error occurred during revocation',
+      error: 'Revocation failed',
       details: error.message
     }, { status: 500 })
   }
