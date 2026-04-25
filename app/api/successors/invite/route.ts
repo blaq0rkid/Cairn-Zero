@@ -38,7 +38,7 @@ export async function POST(request: Request) {
 
   try {
     await resend.emails.send({
-      from: 'Cairn Zero <notifications@cairnzero.com>',
+      from: 'Cairn Zero <noreply@mycairnzero.com>',
       to: successorEmail,
       subject: `${founderEmail} has designated you as a successor`,
       html: `
@@ -68,7 +68,7 @@ export async function POST(request: Request) {
             <p>This designation ensures business continuity and digital asset accessibility in the event of the Designator's incapacity or unavailability.</p>
             
             <div class="warning">
-              <strong>Important:</strong> Before accepting, you must review and agree to the legal terms and disclaimers that govern this role.
+              <strong>Important:</strong> Before accepting, you must review and agree to the legal terms and disclaimers that govern this role, including fiduciary responsibilities and digital attestation requirements.
             </div>
             
             <p style="text-align: center;">
@@ -95,8 +95,8 @@ export async function POST(request: Request) {
             <p style="text-align: center; margin: 0;">
               <strong>Cairn Zero</strong><br>
               Certainty-Only. Zero-Knowledge Sovereignty.<br>
-              <a href="${process.env.NEXT_PUBLIC_APP_URL}/legal/terms" style="color: #2563eb;">Terms of Service</a> | 
-              <a href="${process.env.NEXT_PUBLIC_APP_URL}/legal/privacy" style="color: #2563eb;">Privacy Policy</a>
+              <a href="${process.env.NEXT_PUBLIC_APP_URL}/terms" style="color: #2563eb;">Terms of Service</a> | 
+              <a href="${process.env.NEXT_PUBLIC_APP_URL}/privacy" style="color: #2563eb;">Privacy Policy</a>
             </p>
           </div>
         </body>
