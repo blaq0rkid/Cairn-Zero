@@ -39,7 +39,7 @@ export async function POST(request: Request) {
 
   try {
     const { data, error } = await resend.emails.send({
-      from: 'Cairn Zero <noreply@mycairnzero.com>',
+      from: `Cairn Zero <${process.env.RESEND_FROM_EMAIL}>`,
       to: successorEmail,
       subject: `${founderEmail} has designated you as a successor`,
       html: `
