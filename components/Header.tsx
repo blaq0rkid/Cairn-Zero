@@ -2,15 +2,21 @@
 'use client'
 
 import Link from 'next/link'
-import { Shield } from 'lucide-react'
+import Image from 'next/image'
 
 export default function Header() {
   return (
     <header className="bg-white border-b border-slate-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <Shield className="text-blue-600" size={32} />
+          <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+            <Image 
+              src="https://cdn.marblism.com/JsSjox_nhRL.webp" 
+              alt="Cairn Zero" 
+              width={40} 
+              height={40}
+              className="object-contain"
+            />
             <span className="text-xl font-bold text-slate-900">Cairn Zero</span>
           </Link>
 
@@ -36,4 +42,3 @@ export default function Header() {
     </header>
   )
 }
-
