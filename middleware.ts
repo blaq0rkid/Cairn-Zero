@@ -16,80 +16,89 @@ export async function middleware(request: NextRequest) {
     '/claim',
     '/successor/login',
     '/successor/legal-gateway',
-    '/successor/thank-you',  // CRITICAL: Allow thank you page access
+    '/successor/thank-you',
     '/successor/accept',
     '/successor/declined',
+    '/successor/access-error',
     '/auth/callback',
     '/pricing',
     '/faq',
     '/terms',
-    '/privacy',
-    '/guidepost',
-    '/msa',
-    '/succession-playbook',
-    '/thank-you',
-    '/success'
+    '/privacy'
   ]
 
   const isPublicPath = publicPaths.some(publicPath => 
-    path === publicPath || 
-    path.startsWith('/guidepost/') || 
-    path.startsWith('/successor/accept/')
+    path === publicPath || path.startsWith('/guidepost/')
   )
 
-  // Allow public paths unconditionally
   if (isPublicPath) {
     return res
   }
 
   // Check for simulation mode bypass
   const isSimulation = request.nextUrl.searchParams.get('simulation') === 'true'
+  const isResumption = request.nextUrl.searchParams.get('resumption') === 'true'
   
-  // Allow successor dashboard access in simulation mode
-  if (path.startsWith('/successor') && isSimulation) {
-    console.log('✅ Simulation mode: Bypassing authentication gate')
+  if (path.startsWith('/successor') && (isSimulation || isResumption)) {
+    console.log('✅ Simulation/Resumption mode: Bypassing authentication gate')
     return res
   }
 
-  // Check authentication for protected routes
+  // Check authentication
   const { data: { session } } = await supabase.auth.getSession()
 
   if (!session) {
-    // Not authenticated - redirect based on path
     if (path.startsWith('/successor')) {
       return NextResponse.redirect(new URL('/claim', request.url))
     }
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // Authenticated - enforce role-based routing
-  const { data: successor } = await supabase
-    .from('successors')
-    .select('id, status, legal_accepted_at')
-    .eq('email', session.user.email)
-    .single()
+  // CRITICAL: Check portal context to prevent founder/successor identity crisis
+  // This ensures successors stay in the successor portal even if they have a founder account
+  
+  if (path.startsWith('/successor')) {
+    // User is accessing successor routes - verify they should be here
+    const { data: successor } = await supabase
+      .from('successors')
+      .select('id, status, legal_accepted_at, successor_id')
+      .eq('email', session.user.email)
+      .single()
 
-  if (successor) {
-    // User is a SUCCESSOR - prevent access to founder routes
-    if (path.startsWith('/dashboard') || path.startsWith('/founder')) {
-      console.log('⚠️ Successor blocked from founder route')
-      return NextResponse.redirect(new URL('/successor', request.url))
+    if (!successor) {
+      console.log('⚠️ No successor record found, redirecting to claim')
+      return NextResponse.redirect(new URL('/claim', request.url))
     }
 
-    // Enforce legal gating (except for thank-you and legal-gateway)
-    if (path.startsWith('/successor') && 
-        !path.includes('/legal-gateway') && 
-        !path.includes('/thank-you')) {
+    // Allow access to thank-you if legal acceptance exists (even if not fully active)
+    if (path.includes('/thank-you') && successor.legal_accepted_at) {
+      return res
+    }
+
+    // Enforce legal gating for dashboard
+    if (path === '/successor' || path.startsWith('/successor/dashboard')) {
       if (successor.status !== 'active' || !successor.legal_accepted_at) {
-        console.log('⚠️ Legal acceptance required, redirecting to claim')
+        console.log('⚠️ Legal acceptance required')
         return NextResponse.redirect(new URL('/claim', request.url))
       }
     }
-  } else {
-    // User is a FOUNDER - prevent access to successor routes
-    if (path.startsWith('/successor')) {
-      console.log('⚠️ Founder blocked from successor route')
-      return NextResponse.redirect(new URL('/dashboard', request.url))
+
+    return res
+  }
+
+  // User is accessing founder routes
+  if (path.startsWith('/dashboard') || path.startsWith('/founder')) {
+    // Check if they're actually a successor trying to access founder routes
+    const { data: successor } = await supabase
+      .from('successors')
+      .select('id')
+      .eq('email', session.user.email)
+      .single()
+
+    // If they have a successor record, redirect them to successor portal
+    if (successor) {
+      console.log('⚠️ Successor attempting to access founder route, redirecting')
+      return NextResponse.redirect(new URL('/successor', request.url))
     }
   }
 
