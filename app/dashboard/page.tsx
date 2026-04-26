@@ -15,7 +15,6 @@ export default function FounderDashboard() {
   const [newSuccessor, setNewSuccessor] = useState({
     email: '',
     full_name: '',
-    slot_number: 1
   })
 
   useEffect(() => {
@@ -94,10 +93,17 @@ export default function FounderDashboard() {
     window.location.href = '/login'
   }
 
+  const getNextSlotNumber = () => {
+    if (successors.length === 0) return 1
+    const maxSlot = Math.max(...successors.map(s => s.slot_number || 0))
+    return maxSlot + 1
+  }
+
   const handleAddSuccessor = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!founderId) return
 
+    const nextSlot = getNextSlotNumber()
     const invitationToken = `CZ-${Date.now().toString().slice(-4)}`
     
     const { error } = await supabase
@@ -106,7 +112,7 @@ export default function FounderDashboard() {
         founder_id: founderId,
         email: newSuccessor.email,
         full_name: newSuccessor.full_name,
-        slot_number: newSuccessor.slot_number,
+        slot_number: nextSlot,
         invitation_token: invitationToken,
         status: 'pending'
       })
@@ -116,7 +122,7 @@ export default function FounderDashboard() {
       console.error(error)
     } else {
       setShowAddForm(false)
-      setNewSuccessor({ email: '', full_name: '', slot_number: 1 })
+      setNewSuccessor({ email: '', full_name: '' })
     }
   }
 
@@ -258,19 +264,6 @@ export default function FounderDashboard() {
                     required
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Slot Number
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={newSuccessor.slot_number}
-                    onChange={(e) => setNewSuccessor({ ...newSuccessor, slot_number: parseInt(e.target.value) })}
-                    className="w-full px-4 py-2 border-2 border-slate-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none"
-                    required
-                  />
-                </div>
                 <div className="flex gap-3">
                   <button
                     type="submit"
@@ -290,7 +283,7 @@ export default function FounderDashboard() {
             </div>
           )}
 
-          {/* Successor List */}
+          {/* Successor List - ALWAYS SHOW ALL SLOTS */}
           {successors.length === 0 ? (
             <div className="bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg p-8 text-center">
               <AlertCircle className="mx-auto mb-3 text-slate-400" size={48} />
