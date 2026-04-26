@@ -20,7 +20,7 @@ export async function middleware(request: NextRequest) {
     '/successor/thank-you',
     '/successor/declined',
     '/successor/access-error',
-    '/successor/debug',  // ADD THIS LINE
+    '/successor/debug',
     '/auth/callback'
   ]
 
@@ -94,7 +94,7 @@ export async function middleware(request: NextRequest) {
     return res
   }
 
-  // FOUNDER ROUTES
+  // FOUNDER ROUTES - Changed from /founder to /dashboard
   if (path.startsWith('/dashboard')) {
     const { data: successor } = await supabase
       .from('successors')
