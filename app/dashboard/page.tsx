@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { Shield, Users, Clock, CheckCircle, XCircle, AlertCircle, LogOut, Plus, Trash2 } from 'lucide-react'
+import { Shield, Users, Clock, CheckCircle, XCircle, AlertCircle, LogOut, Plus, Trash2, Edit, FileText } from 'lucide-react'
 import Image from 'next/image'
 
 export default function FounderDashboard() {
@@ -13,6 +13,7 @@ export default function FounderDashboard() {
   const [founderId, setFounderId] = useState<string | null>(null)
   const [showAddForm, setShowAddForm] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [editingGuidepost, setEditingGuidepost] = useState<any>(null)
   const [newSuccessor, setNewSuccessor] = useState({
     email: '',
     full_name: '',
@@ -145,7 +146,6 @@ export default function FounderDashboard() {
       console.error(error)
       setDeletingId(null)
     } else {
-      // Immediately update local state
       setSuccessors(prev => prev.filter(s => s.id !== deletingId))
       setDeletingId(null)
     }
@@ -153,6 +153,27 @@ export default function FounderDashboard() {
 
   const cancelDelete = () => {
     setDeletingId(null)
+  }
+
+  const handleSaveGuidepost = async () => {
+    if (!editingGuidepost || !founderId) return
+
+    const { error } = await supabase
+      .from('successors')
+      .update({ guidepost_instructions: editingGuidepost.content })
+      .eq('id', editingGuidepost.id)
+
+    if (error) {
+      alert('Failed to save guidepost: ' + error.message)
+    } else {
+      setSuccessors(prev =>
+        prev.map(s => s.id === editingGuidepost.id 
+          ? { ...s, guidepost_instructions: editingGuidepost.content }
+          : s
+        )
+      )
+      setEditingGuidepost(null)
+    }
   }
 
   const getStatusBadge = (successor: any) => {
@@ -189,7 +210,6 @@ export default function FounderDashboard() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Header with Logo */}
       <header className="bg-white border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
@@ -297,6 +317,47 @@ export default function FounderDashboard() {
             </div>
           )}
 
+          {editingGuidepost && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+              <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xl font-semibold text-slate-900">
+                    Edit Guidepost for Slot {editingGuidepost.slot}
+                  </h3>
+                  <button
+                    onClick={() => setEditingGuidepost(null)}
+                    className="text-slate-400 hover:text-slate-600"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <p className="text-sm text-slate-600 mb-4">
+                  This information will be shown to your successor after they accept the legal agreement.
+                </p>
+                <textarea
+                  value={editingGuidepost.content}
+                  onChange={(e) => setEditingGuidepost({ ...editingGuidepost, content: e.target.value })}
+                  className="w-full h-64 px-4 py-3 border-2 border-slate-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none"
+                  placeholder="Enter instructions, passwords, important information, or guidance for your successor..."
+                />
+                <div className="flex gap-3 mt-4">
+                  <button
+                    onClick={handleSaveGuidepost}
+                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Save Guidepost
+                  </button>
+                  <button
+                    onClick={() => setEditingGuidepost(null)}
+                    className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {successors.length === 0 ? (
             <div className="bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg p-8 text-center">
               <AlertCircle className="mx-auto mb-3 text-slate-400" size={48} />
@@ -347,6 +408,31 @@ export default function FounderDashboard() {
                         </span>
                       </div>
                     )}
+                  </div>
+
+                  <div className="bg-white border border-slate-200 rounded-lg p-4 mb-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <FileText className="text-slate-600" size={16} />
+                        <span className="text-sm font-medium text-slate-700">Guidepost Instructions</span>
+                      </div>
+                      <button
+                        onClick={() => setEditingGuidepost({
+                          id: successor.id,
+                          slot: successor.sequence_order || successor.slot_number,
+                          content: successor.guidepost_instructions || ''
+                        })}
+                        className="flex items-center gap-1 px-3 py-1 text-sm text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                      >
+                        <Edit size={14} />
+                        Edit
+                      </button>
+                    </div>
+                    <p className="text-sm text-slate-600">
+                      {successor.guidepost_instructions 
+                        ? successor.guidepost_instructions.substring(0, 100) + (successor.guidepost_instructions.length > 100 ? '...' : '')
+                        : 'No instructions set yet'}
+                    </p>
                   </div>
 
                   {deletingId === successor.id ? (
