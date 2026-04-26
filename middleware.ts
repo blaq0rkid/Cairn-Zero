@@ -8,6 +8,7 @@ export async function middleware(request: NextRequest) {
   const supabase = createMiddlewareClient({ req: request, res })
   const path = request.nextUrl.pathname
 
+  // Public paths - no auth required
   const publicPaths = [
     '/',
     '/login',
@@ -22,23 +23,24 @@ export async function middleware(request: NextRequest) {
     '/auth/callback'
   ]
 
+  // Allow public paths through immediately
   if (publicPaths.some(p => path === p)) {
     return res
   }
 
   const { data: { session } } = await supabase.auth.getSession()
 
+  // Protect authenticated routes
   if (!session) {
     if (path.startsWith('/successor')) {
       return NextResponse.redirect(new URL('/successor/access', request.url))
     }
-    return NextResponse.redirect(new URL('/login', request.url))
+    if (path.startsWith('/dashboard')) {
+      return NextResponse.redirect(new URL('/login', request.url))
+    }
   }
 
-  if (path.startsWith('/dashboard')) {
-    return res
-  }
-
+  // Allow all authenticated users through to their respective dashboards
   return res
 }
 
