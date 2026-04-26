@@ -6,7 +6,6 @@ import type { NextRequest } from 'next/server'
 export async function middleware(request: NextRequest) {
   const res = NextResponse.next()
   const supabase = createMiddlewareClient({ req: request, res })
-
   const path = request.nextUrl.pathname
 
   // Public routes - no authentication required
@@ -14,7 +13,9 @@ export async function middleware(request: NextRequest) {
     '/',
     '/login',
     '/signup',
+    '/claim',
     '/successor/login',
+    '/successor/legal-gateway',
     '/successor/accept',
     '/successor/declined',
     '/auth/callback',
@@ -30,62 +31,52 @@ export async function middleware(request: NextRequest) {
   ]
 
   const isPublicPath = publicPaths.some(publicPath => 
-    path === publicPath || path.startsWith('/guidepost/') || path.startsWith('/successor/accept/')
+    path === publicPath || 
+    path.startsWith('/guidepost/') || 
+    path.startsWith('/successor/accept/')
   )
 
   if (isPublicPath) {
     return res
   }
 
-  // Get session
+  // Check authentication
   const { data: { session } } = await supabase.auth.getSession()
 
-  // Protect authenticated routes
   if (!session) {
+    // Not authenticated - redirect based on path
     if (path.startsWith('/successor')) {
-      return NextResponse.redirect(new URL('/successor/login', request.url))
+      return NextResponse.redirect(new URL('/claim', request.url))
     }
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // Role-based routing for authenticated users
-  if (session) {
-    // Check if user is a successor
-    const { data: successor } = await supabase
-      .from('successors')
-      .select('id, status, legal_accepted_at')
-      .eq('email', session.user.email)
-      .single()
+  // Authenticated - enforce role-based routing
+  const { data: successor } = await supabase
+    .from('successors')
+    .select('id, status, legal_accepted_at')
+    .eq('email', session.user.email)
+    .single()
 
-    if (successor) {
-      // User is a SUCCESSOR
-      console.log('🔵 Successor detected:', session.user.email)
-      
-      // Prevent successors from accessing founder routes
-      if (path.startsWith('/dashboard') || path.startsWith('/founder')) {
-        console.log('⚠️ Successor attempted to access founder route, redirecting')
-        return NextResponse.redirect(new URL('/successor', request.url))
-      }
+  if (successor) {
+    // User is a SUCCESSOR - prevent access to founder routes
+    if (path.startsWith('/dashboard') || path.startsWith('/founder')) {
+      console.log('⚠️ Successor blocked from founder route')
+      return NextResponse.redirect(new URL('/successor', request.url))
+    }
 
-      // Legal gating: Check if they've accepted legal terms
-      if (path.startsWith('/successor') && !path.startsWith('/successor/accept')) {
-        if (successor.status !== 'active' || !successor.legal_accepted_at) {
-          console.log('⚠️ Successor has not accepted legal terms')
-          // Allow access to login but nothing else
-          if (path !== '/successor/login') {
-            return NextResponse.redirect(new URL('/successor/login', request.url))
-          }
-        }
+    // Enforce legal gating
+    if (path.startsWith('/successor') && !path.includes('/legal-gateway')) {
+      if (successor.status !== 'active' || !successor.legal_accepted_at) {
+        console.log('⚠️ Legal acceptance required')
+        return NextResponse.redirect(new URL('/claim', request.url))
       }
-    } else {
-      // User is a FOUNDER (not in successors table)
-      console.log('🔴 Founder detected:', session.user.email)
-      
-      // Prevent founders from accessing successor routes
-      if (path.startsWith('/successor') && !path.startsWith('/successor/accept')) {
-        console.log('⚠️ Founder attempted to access successor route, redirecting')
-        return NextResponse.redirect(new URL('/dashboard', request.url))
-      }
+    }
+  } else {
+    // User is a FOUNDER - prevent access to successor routes
+    if (path.startsWith('/successor')) {
+      console.log('⚠️ Founder blocked from successor route')
+      return NextResponse.redirect(new URL('/dashboard', request.url))
     }
   }
 
