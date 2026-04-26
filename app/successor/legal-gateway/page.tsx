@@ -33,6 +33,8 @@ export default function LegalGateway() {
       const normalizedCode = storedCode.toUpperCase()
 
       try {
+        // Lookup WITHOUT filtering on status or invitation_token_used
+        // This enables "Resumption" logic
         const { data, error } = await supabase
           .from('successors')
           .select('*, profiles!successors_founder_id_fkey(email, full_name)')
@@ -43,9 +45,9 @@ export default function LegalGateway() {
           console.log('✅ Successor record found:', data)
           setSuccessorData(data)
           
-          // IDEMPOTENCY CHECK: If already active with legal acceptance, route to thank you
+          // RESUMPTION LOGIC: If already active with legal acceptance, skip to thank you
           if (data.status === 'active' && data.legal_accepted_at) {
-            console.log('✅ Already accepted - routing to thank you page')
+            console.log('✅ Resumption detected - already accepted, routing to thank you')
             sessionStorage.clear()
             if (normalizedCode === 'CZ-2026' || normalizedCode?.startsWith('CZ-')) {
               router.push('/successor/thank-you?simulation=true')
@@ -87,28 +89,44 @@ export default function LegalGateway() {
         accessed_at: new Date().toISOString()
       }
 
-      console.log('🔄 Starting idempotent atomic update')
+      console.log('🔄 Starting atomic update (Resumption-aware)')
       console.log('📦 Payload:', atomicPayload)
 
       let updateData = null
       let updateError = null
+      let recordId = successorData?.id
 
-      // PRIMARY: Update by invitation_token where status != 'active'
-      if (normalizedCode) {
+      // STRATEGY 1: Update by ID if we have it (most reliable)
+      if (recordId) {
+        console.log('Using record ID for update:', recordId)
         const result = await supabase
           .from('successors')
           .update(atomicPayload)
-          .eq('invitation_token', normalizedCode)
-          .neq('status', 'active')
+          .eq('id', recordId)
+          .neq('status', 'declined') // Don't override declined status
           .select()
         
         updateData = result.data
         updateError = result.error
       }
 
-      // FALLBACK: Try by email for test records (CZ-2026)
+      // STRATEGY 2: Update by invitation_token (fallback)
+      if ((!updateData || updateData.length === 0) && normalizedCode) {
+        console.log('Fallback: trying update by invitation_token')
+        const result = await supabase
+          .from('successors')
+          .update(atomicPayload)
+          .eq('invitation_token', normalizedCode)
+          .neq('status', 'declined')
+          .select()
+        
+        updateData = result.data
+        updateError = result.error
+      }
+
+      // STRATEGY 3: Update by email for test records (CZ-2026)
       if ((!updateData || updateData.length === 0) && (normalizedCode === 'CZ-2026' || normalizedCode?.startsWith('CZ-'))) {
-        console.log('⚠️ No match by token, trying test record by email...')
+        console.log('Fallback: trying test record by email')
         const result = await supabase
           .from('successors')
           .update({
@@ -116,14 +134,13 @@ export default function LegalGateway() {
             invitation_token: normalizedCode
           })
           .eq('email', 'test.successor@example.com')
-          .neq('status', 'active')
+          .neq('status', 'declined')
           .select()
         
         updateData = result.data
         updateError = result.error
       }
 
-      // Handle database errors
       if (updateError) {
         console.error('❌ Database update error:', updateError)
         setError(`Database update failed: ${updateError.message}`)
@@ -131,9 +148,9 @@ export default function LegalGateway() {
         return
       }
 
-      // IDEMPOTENCY: Check if already active (no rows updated)
+      // RESUMPTION CHECK: If no rows updated, check if already active
       if (!updateData || updateData.length === 0) {
-        console.log('⚠️ No rows updated - checking if already active...')
+        console.log('⚠️ No rows updated - checking existing state...')
         
         const { data: existingRecord } = await supabase
           .from('successors')
@@ -142,11 +159,11 @@ export default function LegalGateway() {
           .single()
 
         if (existingRecord) {
-          console.log('📋 Existing record state:', existingRecord)
+          console.log('📋 Existing record:', existingRecord)
           
-          // If already active and accepted, proceed to thank you
+          // RESUMPTION: Already active and accepted - acknowledge and proceed
           if (existingRecord.status === 'active' && existingRecord.legal_accepted_at) {
-            console.log('✅ Already active and accepted - idempotent success')
+            console.log('✅ Resumption: Already active - proceeding to dashboard')
             sessionStorage.clear()
             
             if (normalizedCode === 'CZ-2026' || normalizedCode?.startsWith('CZ-')) {
@@ -157,11 +174,10 @@ export default function LegalGateway() {
             return
           }
           
-          // If invitation_token_used is true but not active, help user proceed
+          // Edge case: Token used but not active - force activation
           if (existingRecord.invitation_token_used && existingRecord.legal_accepted_at) {
-            console.log('⚠️ Token used but not active - attempting to activate...')
+            console.log('⚠️ Forcing activation for accepted but inactive record...')
             
-            // Force status to active
             const { data: forceUpdate, error: forceError } = await supabase
               .from('successors')
               .update({ status: 'active' })
@@ -180,15 +196,22 @@ export default function LegalGateway() {
               return
             }
           }
-        }
 
-        console.error('❌ No matching record found and unable to recover')
-        setError('Unable to update successor record. Please contact support.')
+          // Record exists but can't be updated
+          if (existingRecord.status === 'declined') {
+            setError('This succession has been declined and cannot be accepted.')
+          } else {
+            setError('Unable to update successor record. Please contact support.')
+          }
+        } else {
+          setError('No matching successor record found.')
+        }
+        
         setProcessing(false)
         return
       }
 
-      // VERIFICATION: Confirm all fields were set atomically
+      // VERIFICATION: Confirm atomic integrity
       const updated = updateData[0]
       console.log('✅ Atomic update completed:', updated)
 
