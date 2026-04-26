@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { useRouter } from 'next/navigation'
-import { Shield, CheckCircle, XCircle, FileText, AlertCircle } from 'lucide-react'
+import { Shield, CheckCircle, XCircle, FileText } from 'lucide-react'
 
 const LEGAL_VERSION = 'v1-2026-04-25'
 
@@ -33,8 +33,6 @@ export default function LegalGateway() {
       const normalizedCode = storedCode.toUpperCase()
 
       try {
-        // Lookup WITHOUT filtering on status or invitation_token_used
-        // This enables "Resumption" logic
         const { data, error } = await supabase
           .from('successors')
           .select('*, profiles!successors_founder_id_fkey(email, full_name)')
@@ -45,9 +43,8 @@ export default function LegalGateway() {
           console.log('✅ Successor record found:', data)
           setSuccessorData(data)
           
-          // RESUMPTION LOGIC: If already active with legal acceptance, skip to thank you
           if (data.status === 'active' && data.legal_accepted_at) {
-            console.log('✅ Resumption detected - already accepted, routing to thank you')
+            console.log('✅ Already accepted - routing to thank you page')
             sessionStorage.clear()
             if (normalizedCode === 'CZ-2026' || normalizedCode?.startsWith('CZ-')) {
               router.push('/successor/thank-you?simulation=true')
@@ -56,8 +53,6 @@ export default function LegalGateway() {
             }
             return
           }
-        } else {
-          console.log('⚠️ No successor record found')
         }
       } catch (err) {
         console.log('⚠️ Error looking up record:', err)
@@ -79,8 +74,9 @@ export default function LegalGateway() {
 
     try {
       const normalizedCode = claimCode?.toUpperCase()
+      const { data: { user } } = await supabase.auth.getUser()
 
-      // ATOMIC UPDATE PAYLOAD
+      // ATOMIC UPDATE PAYLOAD - All fields in one transaction
       const atomicPayload = {
         status: 'active',
         invitation_token_used: true,
@@ -89,30 +85,19 @@ export default function LegalGateway() {
         accessed_at: new Date().toISOString()
       }
 
-      console.log('🔄 Starting atomic update (Resumption-aware)')
+      // If authenticated, also link successor_id
+      if (user) {
+        atomicPayload.successor_id = user.id
+      }
+
+      console.log('🔄 Starting atomic update')
       console.log('📦 Payload:', atomicPayload)
 
       let updateData = null
       let updateError = null
-      let recordId = successorData?.id
 
-      // STRATEGY 1: Update by ID if we have it (most reliable)
-      if (recordId) {
-        console.log('Using record ID for update:', recordId)
-        const result = await supabase
-          .from('successors')
-          .update(atomicPayload)
-          .eq('id', recordId)
-          .neq('status', 'declined') // Don't override declined status
-          .select()
-        
-        updateData = result.data
-        updateError = result.error
-      }
-
-      // STRATEGY 2: Update by invitation_token (fallback)
-      if ((!updateData || updateData.length === 0) && normalizedCode) {
-        console.log('Fallback: trying update by invitation_token')
+      // Update by invitation_token
+      if (normalizedCode) {
         const result = await supabase
           .from('successors')
           .update(atomicPayload)
@@ -124,9 +109,9 @@ export default function LegalGateway() {
         updateError = result.error
       }
 
-      // STRATEGY 3: Update by email for test records (CZ-2026)
+      // Fallback for test records
       if ((!updateData || updateData.length === 0) && (normalizedCode === 'CZ-2026' || normalizedCode?.startsWith('CZ-'))) {
-        console.log('Fallback: trying test record by email')
+        console.log('⚠️ Trying test record by email...')
         const result = await supabase
           .from('successors')
           .update({
@@ -148,73 +133,17 @@ export default function LegalGateway() {
         return
       }
 
-      // RESUMPTION CHECK: If no rows updated, check if already active
       if (!updateData || updateData.length === 0) {
-        console.log('⚠️ No rows updated - checking existing state...')
-        
-        const { data: existingRecord } = await supabase
-          .from('successors')
-          .select('id, status, legal_accepted_at, legal_version, invitation_token_used')
-          .or(`invitation_token.eq.${normalizedCode},email.eq.test.successor@example.com`)
-          .single()
-
-        if (existingRecord) {
-          console.log('📋 Existing record:', existingRecord)
-          
-          // RESUMPTION: Already active and accepted - acknowledge and proceed
-          if (existingRecord.status === 'active' && existingRecord.legal_accepted_at) {
-            console.log('✅ Resumption: Already active - proceeding to dashboard')
-            sessionStorage.clear()
-            
-            if (normalizedCode === 'CZ-2026' || normalizedCode?.startsWith('CZ-')) {
-              router.push('/successor/thank-you?simulation=true')
-            } else {
-              router.push('/successor/thank-you')
-            }
-            return
-          }
-          
-          // Edge case: Token used but not active - force activation
-          if (existingRecord.invitation_token_used && existingRecord.legal_accepted_at) {
-            console.log('⚠️ Forcing activation for accepted but inactive record...')
-            
-            const { data: forceUpdate, error: forceError } = await supabase
-              .from('successors')
-              .update({ status: 'active' })
-              .eq('id', existingRecord.id)
-              .select()
-            
-            if (!forceError && forceUpdate?.[0]) {
-              console.log('✅ Forced activation successful')
-              sessionStorage.clear()
-              
-              if (normalizedCode === 'CZ-2026' || normalizedCode?.startsWith('CZ-')) {
-                router.push('/successor/thank-you?simulation=true')
-              } else {
-                router.push('/successor/thank-you')
-              }
-              return
-            }
-          }
-
-          // Record exists but can't be updated
-          if (existingRecord.status === 'declined') {
-            setError('This succession has been declined and cannot be accepted.')
-          } else {
-            setError('Unable to update successor record. Please contact support.')
-          }
-        } else {
-          setError('No matching successor record found.')
-        }
-        
+        console.error('❌ No matching record found')
+        setError('Unable to update successor record. Please contact support.')
         setProcessing(false)
         return
       }
 
-      // VERIFICATION: Confirm atomic integrity
       const updated = updateData[0]
       console.log('✅ Atomic update completed:', updated)
 
+      // Verify all fields were set
       const missingFields = []
       if (updated.status !== 'active') missingFields.push('status')
       if (!updated.invitation_token_used) missingFields.push('invitation_token_used')
@@ -228,12 +157,7 @@ export default function LegalGateway() {
         return
       }
 
-      console.log('✅ All fields verified:')
-      console.log('  - Status:', updated.status)
-      console.log('  - Token used:', updated.invitation_token_used)
-      console.log('  - Legal version:', updated.legal_version)
-      console.log('  - Accepted at:', updated.legal_accepted_at)
-      
+      console.log('✅ All fields verified - routing to thank you')
       sessionStorage.clear()
       
       if (normalizedCode === 'CZ-2026' || normalizedCode?.startsWith('CZ-')) {
@@ -268,21 +192,8 @@ export default function LegalGateway() {
             invitation_token: null
           })
           .eq('invitation_token', claimCode)
-          .eq('invitation_token_used', false)
 
         if (updateError) throw updateError
-
-        if (successorData) {
-          await fetch('/api/successors/notify-founder', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              founderId: successorData.founder_id,
-              successorName: successorData.full_name,
-              action: 'declined'
-            })
-          })
-        }
       }
 
       sessionStorage.clear()
@@ -300,35 +211,6 @@ export default function LegalGateway() {
         <div className="text-center">
           <Shield className="mx-auto mb-4 text-blue-600 animate-pulse" size={48} />
           <p className="text-slate-600">Loading legal gateway...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
-        <div className="max-w-md bg-red-50 border-2 border-red-200 rounded-lg p-6 text-center">
-          <AlertCircle className="mx-auto mb-4 text-red-600" size={48} />
-          <h2 className="text-xl font-semibold text-red-900 mb-2">Update Failed</h2>
-          <p className="text-red-700 mb-4 text-sm">{error}</p>
-          <div className="flex flex-col gap-3">
-            <button
-              onClick={() => {
-                setError(null)
-                setProcessing(false)
-              }}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              Try Again
-            </button>
-            <button
-              onClick={() => router.push('/claim')}
-              className="px-4 py-2 border-2 border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50"
-            >
-              Return to Claim Entry
-            </button>
-          </div>
         </div>
       </div>
     )
@@ -353,11 +235,8 @@ export default function LegalGateway() {
               <p className="text-sm text-slate-700 mb-1">
                 <strong>Designated by:</strong> {successorData.profiles?.full_name || successorData.profiles?.email}
               </p>
-              <p className="text-sm text-slate-700 mb-1">
-                <strong>Your name:</strong> {successorData.full_name}
-              </p>
               <p className="text-sm text-slate-700">
-                <strong>Slot:</strong> #{successorData.sequence_order}
+                <strong>Your name:</strong> {successorData.full_name}
               </p>
             </div>
           )}
@@ -366,40 +245,31 @@ export default function LegalGateway() {
             <div className="flex flex-col gap-4 text-sm text-slate-700">
               <div>
                 <p className="font-semibold mb-2">1. Fiduciary Intent</p>
-                <p>I understand that I have been designated as a key Successor for the business continuity of the Founder. I accept the responsibility to access the "Archive" only under the conditions specified in the Succession Bridge protocol.</p>
+                <p>I understand that I have been designated as a key Successor for the business continuity of the Founder. I accept the responsibility to access the Archive only under the conditions specified in the Succession Bridge protocol.</p>
               </div>
 
               <div>
                 <p className="font-semibold mb-2">2. Duty of Care</p>
-                <p>I agree to maintain the security of my access credentials (including physical hardware keys if provided) and to use the accessed information solely for the preservation and continuity of the Founder's business and legacy.</p>
+                <p>I agree to maintain the security of my access credentials and to use the accessed information solely for the preservation and continuity of the Founder's business and legacy.</p>
               </div>
 
               <div>
                 <p className="font-semibold mb-2">3. Zero-Knowledge Acknowledgment</p>
-                <p>I acknowledge that Cairn Zero does not have access to the data I will be retrieving and that I am solely responsible for the "Sovereignty" of the keys provided to me.</p>
+                <p>I acknowledge that Cairn Zero does not have access to the data I will be retrieving and that I am solely responsible for the Sovereignty of the keys provided to me.</p>
               </div>
 
               <div>
                 <p className="font-semibold mb-2">4. Confidentiality</p>
                 <p>I agree to keep all information retrieved through the Successor Portal strictly confidential, except as required for the execution of my duties as a Successor.</p>
               </div>
-
-              <div>
-                <p className="font-semibold mb-2">5. Zero-Knowledge and Sovereignty Disclosure</p>
-                <p>I understand that Cairn Zero is a "Certainty-Only" provider and does not store passwords or provide recovery services for the Archive. If I lose my credentials or hardware keys after a Succession Event has occurred, the data within the Archive may be permanently and irretrievably lost.</p>
-              </div>
-
-              <div>
-                <p className="font-semibold mb-2">6. Revocation and Termination</p>
-                <p>I acknowledge that my status is granted at the sole discretion of the Founder. The Founder retains the absolute right to revoke Successor status at any time without prior notice. Upon revocation, my access tokens and invitation links will be immediately invalidated.</p>
-              </div>
-
-              <div>
-                <p className="font-semibold mb-2">7. Limitation of Liability</p>
-                <p>I agree to indemnify and hold harmless Cairn Zero from any and all claims, losses, or damages resulting from my handling of the Archive assets. Cairn Zero provides the bridge; the Successor and Founder are solely responsible for the traffic crossing it.</p>
-              </div>
             </div>
           </div>
+
+          {error && (
+            <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4 mb-6">
+              <p className="text-sm text-red-700">{error}</p>
+            </div>
+          )}
 
           <div className="bg-white border-2 border-slate-300 rounded-lg p-4 mb-6 flex flex-col gap-3">
             <label className="flex items-start gap-3 cursor-pointer">
@@ -454,7 +324,7 @@ export default function LegalGateway() {
                 Confirm Declination
               </h3>
               <p className="text-slate-700 mb-6">
-                Are you sure you want to decline this successor designation? This action cannot be undone, and the founder will be notified immediately.
+                Are you sure you want to decline this successor designation? This action cannot be undone.
               </p>
               <div className="flex gap-3">
                 <button
