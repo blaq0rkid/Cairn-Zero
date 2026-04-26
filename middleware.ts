@@ -34,13 +34,15 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  if (path.startsWith('/successor') && path !== '/successor/access') {
-    const { data: successor } = await supabase
-      .from('successors')
-      .select('id, status, legal_accepted_at')
-      .eq('email', session.user.email)
-      .single()
+  // Check if user is a successor
+  const { data: successor } = await supabase
+    .from('successors')
+    .select('id, status, legal_accepted_at')
+    .eq('email', session.user.email)
+    .maybeSingle()
 
+  // SUCCESSOR ROUTES - only allow if they are actually a successor
+  if (path.startsWith('/successor')) {
     if (!successor) {
       return NextResponse.redirect(new URL('/successor/access', request.url))
     }
@@ -48,18 +50,16 @@ export async function middleware(request: NextRequest) {
     if (path === '/successor' && !successor.legal_accepted_at) {
       return NextResponse.redirect(new URL('/successor/legal-gateway', request.url))
     }
+
+    return res
   }
 
+  // FOUNDER ROUTES - block successors from accessing founder dashboard
   if (path.startsWith('/dashboard')) {
-    const { data: successor } = await supabase
-      .from('successors')
-      .select('id, status')
-      .eq('email', session.user.email)
-      .single()
-
-    if (successor?.status === 'active' || successor?.status === 'accepted') {
+    if (successor && (successor.status === 'active' || successor.status === 'accepted')) {
       return NextResponse.redirect(new URL('/successor', request.url))
     }
+    return res
   }
 
   return res
