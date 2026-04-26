@@ -13,6 +13,7 @@ export async function middleware(request: NextRequest) {
     '/login',
     '/signup',
     '/claim',
+    '/successor',
     '/successor/access',
     '/successor/legal-gateway',
     '/successor/thank-you',
@@ -27,12 +28,6 @@ export async function middleware(request: NextRequest) {
 
   const { data: { session } } = await supabase.auth.getSession()
 
-  // Allow /successor route without auth if sessionStorage has token
-  // (since we can't access sessionStorage in middleware, we'll be permissive)
-  if (path === '/successor') {
-    return res
-  }
-
   if (!session) {
     if (path.startsWith('/successor')) {
       return NextResponse.redirect(new URL('/successor/access', request.url))
@@ -40,26 +35,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // For authenticated users on successor routes (except /successor itself)
-  if (path.startsWith('/successor') && path !== '/successor') {
-    const { data: successor } = await supabase
-      .from('successors')
-      .select('id, status, legal_accepted_at')
-      .eq('email', session.user.email)
-      .maybeSingle()
-
-    if (!successor) {
-      return NextResponse.redirect(new URL('/successor/access', request.url))
-    }
-
-    if (path === '/successor/legal-gateway' && successor.legal_accepted_at) {
-      return NextResponse.redirect(new URL('/successor', request.url))
-    }
-  }
-
-  // FOUNDER ROUTES - Only check if on dashboard
   if (path.startsWith('/dashboard')) {
-    // Allow access by default (they're logged in)
     return res
   }
 
