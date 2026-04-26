@@ -2,139 +2,127 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { Shield, Mail, Lock, ArrowRight } from 'lucide-react'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [mode, setMode] = useState<'login' | 'signup'>('login')
-  
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const redirectTo = searchParams.get('redirectTo') || '/founder'
   const supabase = createClientComponentClient()
 
-  const handleAuth = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
 
     try {
-      if (mode === 'login') {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        })
-        if (error) throw error
-        router.push(redirectTo)
-      } else {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/auth/callback`,
-          },
-        })
-        if (error) throw error
-        setError('Check your email to confirm your account')
-      }
-    } catch (err: any) {
-      setError(err.message)
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+
+      if (error) throw error
+
+      router.push('/dashboard')
+      router.refresh()
+    } catch (error: any) {
+      setError(error.message)
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="pt-24 pb-20 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md mx-auto">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            {mode === 'login' ? 'Founder Portal' : 'Create Account'}
-          </h1>
-          <p className="text-gray-600">
-            {mode === 'login' 
-              ? 'Access your Succession Bridge dashboard' 
-              : 'Set up your Zero-Knowledge continuity plan'}
-          </p>
-        </div>
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 flex items-center justify-center p-4">
+      <div className="max-w-md w-full">
+        <div className="bg-white rounded-xl shadow-lg border border-slate-200 p-8">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
+              <Shield className="text-blue-600" size={32} />
+            </div>
+            <h1 className="text-3xl font-bold text-slate-900 mb-2">
+              Founder Login
+            </h1>
+            <p className="text-slate-600">
+              Access your succession vault
+            </p>
+          </div>
 
-        <div className="bg-white border border-gray-200 rounded-lg p-8">
-          <form onSubmit={handleAuth} className="flex flex-col gap-6">
+          <form onSubmit={handleLogin} className="flex flex-col gap-6">
             <div>
-              <label htmlFor="email" className="block text-sm font-semibold text-gray-900 mb-2">
+              <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-2">
                 Email Address
               </label>
-              <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                placeholder="founder@company.com"
-              />
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 border-2 border-slate-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+                  placeholder="you@example.com"
+                  required
+                />
+              </div>
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-semibold text-gray-900 mb-2">
+              <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-2">
                 Password
               </label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={6}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
-                placeholder="••••••••"
-              />
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+                <input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 border-2 border-slate-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all"
+                  placeholder="••••••••"
+                  required
+                />
+              </div>
             </div>
 
             {error && (
-              <div className={`p-4 rounded-lg ${
-                error.includes('Check your email') 
-                  ? 'bg-green-50 text-green-800 border border-green-200' 
-                  : 'bg-red-50 text-red-800 border border-red-200'
-              }`}>
-                {error}
+              <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4">
+                <p className="text-sm text-red-700">{error}</p>
               </div>
             )}
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gray-900 text-white py-3 rounded-lg font-semibold hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {loading ? 'Processing...' : mode === 'login' ? 'Sign In' : 'Create Account'}
+              {loading ? 'Signing in...' : 'Sign In'}
+              {!loading && <ArrowRight size={20} />}
             </button>
           </form>
 
           <div className="mt-6 text-center">
-            <button
-              onClick={() => {
-                setMode(mode === 'login' ? 'signup' : 'login')
-                setError(null)
-              }}
-              className="text-gray-600 hover:text-gray-900 text-sm"
-            >
-              {mode === 'login' 
-                ? "Don't have an account? Sign up" 
-                : 'Already have an account? Sign in'}
-            </button>
+            <p className="text-sm text-slate-600">
+              Don't have an account?{' '}
+              <Link href="/signup" className="text-blue-600 hover:text-blue-700 font-medium">
+                Sign up
+              </Link>
+            </p>
           </div>
-        </div>
 
-        <div className="mt-8 bg-gray-50 border border-gray-200 rounded-lg p-6">
-          <h3 className="font-semibold text-gray-900 mb-2">Zero-Knowledge Architecture</h3>
-          <p className="text-sm text-gray-600">
-            Your credentials authenticate you to the platform, but we never have access to your encrypted succession data. 
-            All sensitive content is encrypted client-side with your hardware keys.
-          </p>
+          <div className="mt-4 text-center">
+            <p className="text-sm text-slate-600">
+              Are you a successor?{' '}
+              <Link href="/claim" className="text-blue-600 hover:text-blue-700 font-medium">
+                Enter claim code
+              </Link>
+            </p>
+          </div>
         </div>
       </div>
     </div>
