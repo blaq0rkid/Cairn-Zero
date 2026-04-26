@@ -143,9 +143,11 @@ export default function FounderDashboard() {
     if (error) {
       alert('Failed to delete successor slot: ' + error.message)
       console.error(error)
+      setDeletingId(null)
+    } else {
+      // Reload the page to show empty state
+      window.location.reload()
     }
-    
-    setDeletingId(null)
   }
 
   const cancelDelete = () => {
