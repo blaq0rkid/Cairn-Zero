@@ -4,7 +4,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { Shield, ArrowRight, AlertCircle, Users, CheckCircle } from 'lucide-react'
+import { Shield, ArrowRight, AlertCircle, CheckCircle } from 'lucide-react'
 
 export default function SuccessorClaimPage() {
   const router = useRouter()
@@ -12,12 +12,6 @@ export default function SuccessorClaimPage() {
   const [claimCode, setClaimCode] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [debugInfo, setDebugInfo] = useState<string[]>([])
-
-  const addDebug = (message: string) => {
-    console.log(message)
-    setDebugInfo(prev => [...prev, message])
-  }
 
   const handleClaimSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -29,143 +23,113 @@ export default function SuccessorClaimPage() {
 
     setLoading(true)
     setError(null)
-    setDebugInfo([])
 
     const normalizedCode = claimCode.trim().toUpperCase()
 
     try {
-      // STEP 1: Lock portal context to SUCCESSOR
+      // STEP 1: LOCK PORTAL CONTEXT TO SUCCESSOR (prevents founder redirect)
       sessionStorage.clear()
       sessionStorage.setItem('portal_context', 'successor')
       sessionStorage.setItem('claim_code', normalizedCode)
-      addDebug('✅ Portal context locked to SUCCESSOR')
+      console.log('✅ Portal context: SUCCESSOR')
 
       // STEP 2: Get current auth state
-      const { data: { user }, error: authError } = await supabase.auth.getUser()
-      
-      if (authError) {
-        addDebug('⚠️ Not authenticated')
-      } else {
-        addDebug(`✅ Authenticated as: ${user?.email}`)
-      }
+      const { data: { user } } = await supabase.auth.getUser()
+      console.log(user ? `✅ Authenticated: ${user.email}` : '⚠️ Not authenticated')
 
-      // STEP 3: Lookup successor record (no status filter - find ANY matching record)
-      addDebug(`🔍 Looking up successor record for code: ${normalizedCode}`)
+      // STEP 3: Lookup successor record (no status filter)
+      console.log(`🔍 Looking up code: ${normalizedCode}`)
       
       const { data: successor, error: lookupError } = await supabase
         .from('successors')
-        .select('id, email, status, legal_accepted_at, invitation_token_used, legal_version, successor_id, founder_id')
+        .select('id, email, status, legal_accepted_at, invitation_token_used, legal_version, successor_id')
         .or(`invitation_token.eq.${normalizedCode},email.eq.test.successor@example.com`)
         .single()
 
       if (lookupError || !successor) {
-        addDebug('❌ Invalid claim code')
+        console.error('❌ Invalid claim code')
         setError('Invalid claim code. Please check and try again.')
         setLoading(false)
         return
       }
 
-      addDebug(`✅ Successor record found (ID: ${successor.id})`)
-      addDebug(`   Email: ${successor.email}`)
-      addDebug(`   Status: ${successor.status}`)
-      addDebug(`   Legal Accepted: ${successor.legal_accepted_at ? 'Yes' : 'No'}`)
-      addDebug(`   Successor ID linked: ${successor.successor_id ? 'Yes' : 'No'}`)
+      console.log(`✅ Record found (ID: ${successor.id})`)
+      console.log(`   Status: ${successor.status}`)
+      console.log(`   Legal: ${successor.legal_accepted_at ? 'Yes' : 'No'}`)
+      console.log(`   Linked: ${successor.successor_id ? 'Yes' : 'No'}`)
 
-      // STEP 4: STATE RECOVERY - Fix records with mismatched states
-      let needsStateRecovery = false
-      const recoveryUpdates: any = {}
-
-      // Case 1: Has legal_accepted_at but status still pending
+      // STEP 4: STATE RECOVERY - Fix mismatched states
+      const fixes: any = {}
+      
       if (successor.legal_accepted_at && successor.status === 'pending') {
-        addDebug('⚠️ State mismatch: legal_accepted_at exists but status=pending')
-        needsStateRecovery = true
-        recoveryUpdates.status = 'active'
+        console.log('🔧 Fixing: status pending → active')
+        fixes.status = 'active'
       }
-
-      // Case 2: Has legal_accepted_at but missing legal_version
+      
       if (successor.legal_accepted_at && !successor.legal_version) {
-        addDebug('⚠️ State mismatch: legal_accepted_at exists but legal_version is null')
-        needsStateRecovery = true
-        recoveryUpdates.legal_version = 'v1-2026-04-25'
+        console.log('🔧 Fixing: missing legal_version')
+        fixes.legal_version = 'v1-2026-04-25'
       }
-
-      // Case 3: Has legal_accepted_at but invitation_token_used is false
+      
       if (successor.legal_accepted_at && !successor.invitation_token_used) {
-        addDebug('⚠️ State mismatch: legal_accepted_at exists but invitation_token_used is false')
-        needsStateRecovery = true
-        recoveryUpdates.invitation_token_used = true
+        console.log('🔧 Fixing: invitation_token_used false → true')
+        fixes.invitation_token_used = true
       }
 
-      // Execute state recovery if needed
-      if (needsStateRecovery) {
-        addDebug('🔧 Applying state recovery updates...')
-        const { data: recoveredRecord, error: recoveryError } = await supabase
+      if (Object.keys(fixes).length > 0) {
+        const { data: fixed } = await supabase
           .from('successors')
-          .update(recoveryUpdates)
+          .update(fixes)
           .eq('id', successor.id)
           .select()
           .single()
 
-        if (recoveryError) {
-          addDebug(`❌ State recovery failed: ${recoveryError.message}`)
-        } else {
-          addDebug('✅ State recovery successful')
-          // Update local successor object
-          Object.assign(successor, recoveredRecord)
+        if (fixed) {
+          Object.assign(successor, fixed)
+          console.log('✅ State recovery complete')
         }
       }
 
-      // STEP 5: AUTO-LINK successor_id if user is authenticated and record is active
+      // STEP 5: AUTO-LINK successor_id (CRITICAL FIX)
       if (user && successor.status === 'active' && !successor.successor_id) {
-        addDebug('🔗 Auto-linking successor_id to authenticated user...')
+        console.log('🔗 AUTO-LINKING successor_id...')
         
-        const { data: linkedRecord, error: linkError } = await supabase
+        const { data: linked } = await supabase
           .from('successors')
           .update({ successor_id: user.id })
           .eq('id', successor.id)
           .select()
           .single()
 
-        if (linkError) {
-          addDebug(`❌ Auto-link failed: ${linkError.message}`)
-        } else {
-          addDebug('✅ Auto-link successful')
-          successor.successor_id = linkedRecord.successor_id
+        if (linked) {
+          successor.successor_id = linked.successor_id
+          console.log('✅ Auto-link successful')
         }
       }
 
-      // STEP 6: Store successor record ID for dashboard binding
+      // STEP 6: Store record ID for dashboard binding
       sessionStorage.setItem('successor_record_id', successor.id)
       sessionStorage.setItem('successor_verified', 'true')
 
       // STEP 7: Route based on state
       if (successor.status === 'active' && successor.legal_accepted_at) {
-        addDebug('✅ Successor already active - routing to thank you (resumption)')
+        console.log('✅ Already active → thank you (resumption)')
         router.push('/successor/thank-you?resumption=true')
         return
       }
 
-      if (successor.invitation_token_used && !successor.legal_accepted_at) {
-        addDebug('⚠️ Invitation already used but not completed')
-        setError('This invitation link has already been used. Please contact the founder.')
-        setLoading(false)
-        return
-      }
-
       if (successor.status === 'declined') {
-        addDebug('⚠️ Succession was declined')
         setError('This succession designation has been declined.')
         setLoading(false)
         return
       }
 
-      // STEP 8: Route to legal gateway for fresh acceptance
-      addDebug('🎯 Routing to legal gateway for acceptance')
+      // STEP 8: Route to legal gateway
+      console.log('🎯 Routing to legal gateway')
       router.push('/successor/legal-gateway')
 
     } catch (err: any) {
-      addDebug(`❌ Unexpected error: ${err.message}`)
-      console.error('Error processing claim:', err)
+      console.error('❌ Error:', err.message)
       setError('An unexpected error occurred. Please try again.')
       setLoading(false)
     }
@@ -173,7 +137,7 @@ export default function SuccessorClaimPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 flex items-center justify-center p-4">
-      <div className="max-w-2xl w-full">
+      <div className="max-w-md w-full">
         <div className="bg-white rounded-xl shadow-lg border border-slate-200 p-8">
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
@@ -185,14 +149,6 @@ export default function SuccessorClaimPage() {
             <p className="text-slate-600">
               Enter your claim code to access the successor portal
             </p>
-          </div>
-
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 flex items-start gap-3">
-            <Users className="text-blue-600 flex-shrink-0 mt-0.5" size={20} />
-            <div className="text-sm text-slate-700">
-              <p className="font-medium mb-1">Dual Role Users:</p>
-              <p>If you're both a Founder and Successor, entering a claim code here will take you to the Successor Portal for that specific designation.</p>
-            </div>
           </div>
 
           <form onSubmit={handleClaimSubmit} className="flex flex-col gap-6">
@@ -221,17 +177,6 @@ export default function SuccessorClaimPage() {
               </div>
             )}
 
-            {debugInfo.length > 0 && (
-              <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
-                <p className="text-xs font-semibold text-slate-700 mb-2">Debug Log:</p>
-                <div className="text-xs text-slate-600 font-mono space-y-1 max-h-40 overflow-y-auto">
-                  {debugInfo.map((msg, idx) => (
-                    <div key={idx}>{msg}</div>
-                  ))}
-                </div>
-              </div>
-            )}
-
             <button
               type="submit"
               disabled={loading || !claimCode.trim()}
@@ -241,17 +186,7 @@ export default function SuccessorClaimPage() {
               {!loading && <ArrowRight size={20} />}
             </button>
           </form>
-
-          <div className="mt-6 pt-6 border-t border-slate-200">
-            <p className="text-xs text-slate-500 text-center">
-              By continuing, you acknowledge that you are accessing a secure succession portal
-            </p>
-          </div>
         </div>
-
-        <p className="mt-6 text-center text-xs text-slate-400">
-          Cairn Zero - Certainty. Sovereignty. Continuity.
-        </p>
       </div>
     </div>
   )
