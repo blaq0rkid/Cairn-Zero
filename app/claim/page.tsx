@@ -4,7 +4,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { Shield, ArrowRight, AlertCircle, CheckCircle } from 'lucide-react'
+import { Shield, ArrowRight, AlertCircle } from 'lucide-react'
 
 export default function SuccessorClaimPage() {
   const router = useRouter()
@@ -27,18 +27,18 @@ export default function SuccessorClaimPage() {
     const normalizedCode = claimCode.trim().toUpperCase()
 
     try {
-      // STEP 1: LOCK PORTAL CONTEXT TO SUCCESSOR (prevents founder redirect)
+      // STEP 1: Lock portal context to SUCCESSOR (prevents founder redirect)
       sessionStorage.clear()
       sessionStorage.setItem('portal_context', 'successor')
       sessionStorage.setItem('claim_code', normalizedCode)
-      console.log('✅ Portal context: SUCCESSOR')
+      console.log('✅ Portal context locked: SUCCESSOR')
 
-      // STEP 2: Get current auth state
+      // STEP 2: Get auth state
       const { data: { user } } = await supabase.auth.getUser()
-      console.log(user ? `✅ Authenticated: ${user.email}` : '⚠️ Not authenticated')
+      console.log(user ? `✅ Auth: ${user.email}` : '⚠️ Not authenticated')
 
-      // STEP 3: Lookup successor record (no status filter)
-      console.log(`🔍 Looking up code: ${normalizedCode}`)
+      // STEP 3: Lookup successor record (no status filter for recovery)
+      console.log(`🔍 Looking up: ${normalizedCode}`)
       
       const { data: successor, error: lookupError } = await supabase
         .from('successors')
@@ -47,32 +47,32 @@ export default function SuccessorClaimPage() {
         .single()
 
       if (lookupError || !successor) {
-        console.error('❌ Invalid claim code')
+        console.error('❌ Invalid code')
         setError('Invalid claim code. Please check and try again.')
         setLoading(false)
         return
       }
 
-      console.log(`✅ Record found (ID: ${successor.id})`)
+      console.log(`✅ Found: ${successor.id}`)
       console.log(`   Status: ${successor.status}`)
       console.log(`   Legal: ${successor.legal_accepted_at ? 'Yes' : 'No'}`)
       console.log(`   Linked: ${successor.successor_id ? 'Yes' : 'No'}`)
 
-      // STEP 4: STATE RECOVERY - Fix mismatched states
+      // STEP 4: STATE RECOVERY - Fix mismatches
       const fixes: any = {}
       
       if (successor.legal_accepted_at && successor.status === 'pending') {
-        console.log('🔧 Fixing: status pending → active')
+        console.log('🔧 Fix: status → active')
         fixes.status = 'active'
       }
       
       if (successor.legal_accepted_at && !successor.legal_version) {
-        console.log('🔧 Fixing: missing legal_version')
+        console.log('🔧 Fix: legal_version')
         fixes.legal_version = 'v1-2026-04-25'
       }
       
       if (successor.legal_accepted_at && !successor.invitation_token_used) {
-        console.log('🔧 Fixing: invitation_token_used false → true')
+        console.log('🔧 Fix: token_used → true')
         fixes.invitation_token_used = true
       }
 
@@ -90,7 +90,7 @@ export default function SuccessorClaimPage() {
         }
       }
 
-      // STEP 5: AUTO-LINK successor_id (CRITICAL FIX)
+      // STEP 5: AUTO-LINK successor_id (CRITICAL FIX for blank pages)
       if (user && successor.status === 'active' && !successor.successor_id) {
         console.log('🔗 AUTO-LINKING successor_id...')
         
@@ -113,7 +113,7 @@ export default function SuccessorClaimPage() {
 
       // STEP 7: Route based on state
       if (successor.status === 'active' && successor.legal_accepted_at) {
-        console.log('✅ Already active → thank you (resumption)')
+        console.log('✅ Already active → resumption')
         router.push('/successor/thank-you?resumption=true')
         return
       }
@@ -125,7 +125,7 @@ export default function SuccessorClaimPage() {
       }
 
       // STEP 8: Route to legal gateway
-      console.log('🎯 Routing to legal gateway')
+      console.log('🎯 → legal gateway')
       router.push('/successor/legal-gateway')
 
     } catch (err: any) {
@@ -161,12 +161,12 @@ export default function SuccessorClaimPage() {
                 type="text"
                 value={claimCode}
                 onChange={(e) => setClaimCode(e.target.value)}
-                placeholder="Enter your code (e.g., CZ-2026)"
+                placeholder="CZ-2026"
                 className="w-full px-4 py-3 border-2 border-slate-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-lg font-mono uppercase"
                 disabled={loading}
               />
               <p className="mt-2 text-xs text-slate-500">
-                This code was provided by the founder who designated you as a successor
+                This code was provided by the founder who designated you
               </p>
             </div>
 
