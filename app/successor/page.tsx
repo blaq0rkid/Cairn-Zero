@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { Shield, LogOut, User, Calendar, FileText } from 'lucide-react'
-import Image from 'next/image'
+import Header from '@/components/Header'
 
 export default function SuccessorDashboard() {
   const router = useRouter()
@@ -52,19 +52,21 @@ export default function SuccessorDashboard() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Header with Logo */}
-      <header className="bg-white border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-3">
-              <Image 
-                src="https://cdn.marblism.com/JsSjox_nhRL.webp" 
-                alt="Cairn Zero" 
-                width={40} 
-                height={40}
-                className="object-contain"
-              />
-              <span className="text-xl font-bold text-slate-900">Cairn Zero</span>
+      <Header />
+
+      <div className="max-w-6xl mx-auto p-4 py-8">
+        <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-8">
+          <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-200">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full">
+                <Shield className="text-blue-600" size={32} />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold text-slate-900">Successor Dashboard</h1>
+                <p className="text-slate-600 mt-1">
+                  Welcome, {successorData?.full_name || successorData?.email}
+                </p>
+              </div>
             </div>
             <button
               onClick={handleLogout}
@@ -73,22 +75,6 @@ export default function SuccessorDashboard() {
               <LogOut size={20} />
               Log Out
             </button>
-          </div>
-        </div>
-      </header>
-
-      <div className="max-w-6xl mx-auto p-4 py-8">
-        <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-8">
-          <div className="flex items-center gap-4 mb-8 pb-6 border-b border-slate-200">
-            <div className="flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full">
-              <Shield className="text-blue-600" size={32} />
-            </div>
-            <div className="flex-1">
-              <h1 className="text-3xl font-bold text-slate-900">Successor Dashboard</h1>
-              <p className="text-slate-600 mt-1">
-                Welcome, {successorData?.full_name || successorData?.email}
-              </p>
-            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
