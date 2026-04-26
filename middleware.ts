@@ -27,6 +27,12 @@ export async function middleware(request: NextRequest) {
 
   const { data: { session } } = await supabase.auth.getSession()
 
+  // Allow /successor route without auth if sessionStorage has token
+  // (since we can't access sessionStorage in middleware, we'll be permissive)
+  if (path === '/successor') {
+    return res
+  }
+
   if (!session) {
     if (path.startsWith('/successor')) {
       return NextResponse.redirect(new URL('/successor/access', request.url))
@@ -34,8 +40,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // SUCCESSOR ROUTES - Check if accessing successor pages
-  if (path.startsWith('/successor')) {
+  // For authenticated users on successor routes (except /successor itself)
+  if (path.startsWith('/successor') && path !== '/successor') {
     const { data: successor } = await supabase
       .from('successors')
       .select('id, status, legal_accepted_at')
@@ -46,14 +52,12 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL('/successor/access', request.url))
     }
 
-    if (path === '/successor' && !successor.legal_accepted_at) {
-      return NextResponse.redirect(new URL('/successor/legal-gateway', request.url))
+    if (path === '/successor/legal-gateway' && successor.legal_accepted_at) {
+      return NextResponse.redirect(new URL('/successor', request.url))
     }
-
-    return res
   }
 
-  // FOUNDER ROUTES - Only check successor status when accessing dashboard
+  // FOUNDER ROUTES - Only check if on dashboard
   if (path.startsWith('/dashboard')) {
     // Allow access by default (they're logged in)
     return res
