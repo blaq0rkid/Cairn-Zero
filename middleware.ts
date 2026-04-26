@@ -34,15 +34,14 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // Check if user is a successor
-  const { data: successor } = await supabase
-    .from('successors')
-    .select('id, status, legal_accepted_at')
-    .eq('email', session.user.email)
-    .maybeSingle()
-
-  // SUCCESSOR ROUTES - only allow if they are actually a successor
+  // SUCCESSOR ROUTES - Check if accessing successor pages
   if (path.startsWith('/successor')) {
+    const { data: successor } = await supabase
+      .from('successors')
+      .select('id, status, legal_accepted_at')
+      .eq('email', session.user.email)
+      .maybeSingle()
+
     if (!successor) {
       return NextResponse.redirect(new URL('/successor/access', request.url))
     }
@@ -54,11 +53,9 @@ export async function middleware(request: NextRequest) {
     return res
   }
 
-  // FOUNDER ROUTES - block successors from accessing founder dashboard
+  // FOUNDER ROUTES - Only check successor status when accessing dashboard
   if (path.startsWith('/dashboard')) {
-    if (successor && (successor.status === 'active' || successor.status === 'accepted')) {
-      return NextResponse.redirect(new URL('/successor', request.url))
-    }
+    // Allow access by default (they're logged in)
     return res
   }
 
