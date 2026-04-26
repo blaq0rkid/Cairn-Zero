@@ -66,8 +66,8 @@ export default function LegalGateway() {
     try {
       const normalizedCode = claimCode?.toUpperCase()
 
-      // ATOMIC UPDATE: All fields must be set in one operation
-      const updatePayload = {
+      // ATOMIC UPDATE PAYLOAD - All required fields in one operation
+      const atomicPayload = {
         status: 'active',
         invitation_token_used: true,
         legal_version: LEGAL_VERSION,
@@ -75,25 +75,28 @@ export default function LegalGateway() {
         accessed_at: new Date().toISOString()
       }
 
-      console.log('🔄 Performing atomic database update:', updatePayload)
+      console.log('🔄 Atomic database update payload:', atomicPayload)
 
-      // Try update by invitation_token first
+      // RECOVERY LOGIC: Find by token AND status=pending (allows overwrite of partial updates)
+      // DO NOT filter on legal_accepted_at IS NULL - this blocks recovery
       let { data: updateData, error: updateError } = await supabase
         .from('successors')
-        .update(updatePayload)
+        .update(atomicPayload)
         .eq('invitation_token', normalizedCode)
+        .eq('status', 'pending')
         .select()
 
-      // Fallback: Update by email for test records
-      if (!updateData || updateData.length === 0) {
-        console.log('⚠️ No match by token, trying by email...')
+      // Fallback: Try by email for test records (CZ-2026)
+      if ((!updateData || updateData.length === 0) && (normalizedCode === 'CZ-2026' || normalizedCode?.startsWith('CZ-'))) {
+        console.log('⚠️ No match by token, trying test record by email...')
         const result = await supabase
           .from('successors')
           .update({
-            ...updatePayload,
+            ...atomicPayload,
             invitation_token: normalizedCode
           })
           .eq('email', 'test.successor@example.com')
+          .eq('status', 'pending')
           .select()
         
         updateData = result.data
@@ -108,38 +111,49 @@ export default function LegalGateway() {
       }
 
       if (!updateData || updateData.length === 0) {
-        console.error('❌ No rows updated')
-        setError('Failed to update successor record. No matching record found.')
+        console.error('❌ No matching record found')
+        console.log('Debug: Token =', normalizedCode)
+        setError('No matching pending successor record found. The invitation may have already been used or the record may not exist.')
         setProcessing(false)
         return
       }
 
-      // Verify all fields were set
+      // VERIFICATION: Confirm all fields were set atomically
       const updated = updateData[0]
-      console.log('✅ Database update successful:', updated)
+      console.log('✅ Database update result:', updated)
 
-      if (updated.status !== 'active' || 
-          !updated.invitation_token_used || 
-          !updated.legal_version || 
-          !updated.legal_accepted_at) {
-        console.error('❌ Partial update detected:', updated)
-        setError('Atomic update failed: Not all fields were set correctly.')
+      const missingFields = []
+      if (updated.status !== 'active') missingFields.push('status')
+      if (!updated.invitation_token_used) missingFields.push('invitation_token_used')
+      if (!updated.legal_version) missingFields.push('legal_version')
+      if (!updated.legal_accepted_at) missingFields.push('legal_accepted_at')
+
+      if (missingFields.length > 0) {
+        console.error('❌ Partial update detected. Missing fields:', missingFields)
+        setError(`Atomic update incomplete. Missing: ${missingFields.join(', ')}`)
         setProcessing(false)
         return
       }
 
-      console.log('✅ All fields verified - routing to thank you page')
+      console.log('✅ All fields verified atomic update successful')
+      console.log('✅ Status:', updated.status)
+      console.log('✅ Token used:', updated.invitation_token_used)
+      console.log('✅ Legal version:', updated.legal_version)
+      console.log('✅ Accepted at:', updated.legal_accepted_at)
       
-      // Clear session and route to thank you page
+      // Clear session storage
       sessionStorage.clear()
       
+      // Route to thank you page with simulation flag if applicable
       if (normalizedCode === 'CZ-2026' || normalizedCode?.startsWith('CZ-')) {
+        console.log('🎯 Routing to thank you page with simulation=true')
         router.push('/successor/thank-you?simulation=true')
       } else {
+        console.log('🎯 Routing to thank you page')
         router.push('/successor/thank-you')
       }
     } catch (err: any) {
-      console.error('❌ Unexpected error:', err)
+      console.error('❌ Unexpected error during acceptance:', err)
       setError(`An error occurred: ${err.message}`)
       setProcessing(false)
     }
@@ -203,16 +217,27 @@ export default function LegalGateway() {
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
-        <div className="max-w-md bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+        <div className="max-w-md bg-red-50 border-2 border-red-200 rounded-lg p-6 text-center">
           <AlertCircle className="mx-auto mb-4 text-red-600" size={48} />
           <h2 className="text-xl font-semibold text-red-900 mb-2">Update Failed</h2>
           <p className="text-red-700 mb-4 text-sm">{error}</p>
-          <button
-            onClick={() => router.push('/claim')}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-          >
-            Return to Claim Entry
-          </button>
+          <div className="flex flex-col gap-3">
+            <button
+              onClick={() => {
+                setError(null)
+                setProcessing(false)
+              }}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              Try Again
+            </button>
+            <button
+              onClick={() => router.push('/claim')}
+              className="px-4 py-2 border-2 border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50"
+            >
+              Return to Claim Entry
+            </button>
+          </div>
         </div>
       </div>
     )
