@@ -66,7 +66,7 @@ export default function LegalGateway() {
     try {
       const normalizedCode = claimCode?.toUpperCase()
 
-      // ATOMIC UPDATE PAYLOAD - All required fields in one operation
+      // ATOMIC UPDATE PAYLOAD - All required fields
       const atomicPayload = {
         status: 'active',
         invitation_token_used: true,
@@ -75,16 +75,28 @@ export default function LegalGateway() {
         accessed_at: new Date().toISOString()
       }
 
-      console.log('🔄 Atomic database update payload:', atomicPayload)
+      console.log('🔄 Starting idempotent atomic update')
+      console.log('📦 Payload:', atomicPayload)
 
-      // RECOVERY LOGIC: Find by token AND status=pending (allows overwrite of partial updates)
-      // DO NOT filter on legal_accepted_at IS NULL - this blocks recovery
-      let { data: updateData, error: updateError } = await supabase
-        .from('successors')
-        .update(atomicPayload)
-        .eq('invitation_token', normalizedCode)
-        .eq('status', 'pending')
-        .select()
+      // IDEMPOTENT LOGIC: Update record by ID where status is NOT already 'active'
+      // This allows overwrite of partial updates (legal_accepted_at may already exist)
+      // Removed legal_accepted_at IS NULL constraint to enable recovery
+      
+      let updateData = null
+      let updateError = null
+
+      // Try by invitation_token first (primary path)
+      if (normalizedCode) {
+        const result = await supabase
+          .from('successors')
+          .update(atomicPayload)
+          .eq('invitation_token', normalizedCode)
+          .neq('status', 'active')  // Only update if not already active (idempotency)
+          .select()
+        
+        updateData = result.data
+        updateError = result.error
+      }
 
       // Fallback: Try by email for test records (CZ-2026)
       if ((!updateData || updateData.length === 0) && (normalizedCode === 'CZ-2026' || normalizedCode?.startsWith('CZ-'))) {
@@ -96,31 +108,53 @@ export default function LegalGateway() {
             invitation_token: normalizedCode
           })
           .eq('email', 'test.successor@example.com')
-          .eq('status', 'pending')
+          .neq('status', 'active')  // Idempotency check
           .select()
         
         updateData = result.data
         updateError = result.error
       }
 
+      // Handle database errors
       if (updateError) {
-        console.error('❌ Atomic update failed:', updateError)
+        console.error('❌ Database update error:', updateError)
         setError(`Database update failed: ${updateError.message}`)
         setProcessing(false)
         return
       }
 
+      // Handle no matching records (may already be active - check idempotency)
       if (!updateData || updateData.length === 0) {
-        console.error('❌ No matching record found')
-        console.log('Debug: Token =', normalizedCode)
-        setError('No matching pending successor record found. The invitation may have already been used or the record may not exist.')
+        console.log('⚠️ No rows updated - checking if already active...')
+        
+        // Check if record already exists with status='active'
+        const { data: existingRecord } = await supabase
+          .from('successors')
+          .select('id, status, legal_accepted_at, legal_version, invitation_token_used')
+          .or(`invitation_token.eq.${normalizedCode},email.eq.test.successor@example.com`)
+          .single()
+
+        if (existingRecord?.status === 'active' && existingRecord?.legal_accepted_at) {
+          console.log('✅ Record already active - idempotent success')
+          sessionStorage.clear()
+          
+          if (normalizedCode === 'CZ-2026' || normalizedCode?.startsWith('CZ-')) {
+            router.push('/successor/thank-you?simulation=true')
+          } else {
+            router.push('/successor/thank-you')
+          }
+          return
+        }
+
+        console.error('❌ No matching record found and not already active')
+        setError('No matching successor record found. Please verify your claim code.')
         setProcessing(false)
         return
       }
 
       // VERIFICATION: Confirm all fields were set atomically
       const updated = updateData[0]
-      console.log('✅ Database update result:', updated)
+      console.log('✅ Atomic update completed:', updated)
 
       const missingFields = []
       if (updated.status !== 'active') missingFields.push('status')
@@ -129,32 +163,32 @@ export default function LegalGateway() {
       if (!updated.legal_accepted_at) missingFields.push('legal_accepted_at')
 
       if (missingFields.length > 0) {
-        console.error('❌ Partial update detected. Missing fields:', missingFields)
-        setError(`Atomic update incomplete. Missing: ${missingFields.join(', ')}`)
+        console.error('❌ Atomic integrity violation. Missing:', missingFields)
+        setError(`Database update incomplete. Missing fields: ${missingFields.join(', ')}`)
         setProcessing(false)
         return
       }
 
-      console.log('✅ All fields verified atomic update successful')
-      console.log('✅ Status:', updated.status)
-      console.log('✅ Token used:', updated.invitation_token_used)
-      console.log('✅ Legal version:', updated.legal_version)
-      console.log('✅ Accepted at:', updated.legal_accepted_at)
+      console.log('✅ All fields verified:')
+      console.log('  - Status:', updated.status)
+      console.log('  - Token used:', updated.invitation_token_used)
+      console.log('  - Legal version:', updated.legal_version)
+      console.log('  - Accepted at:', updated.legal_accepted_at)
       
       // Clear session storage
       sessionStorage.clear()
       
-      // Route to thank you page with simulation flag if applicable
+      // Route to thank you page
       if (normalizedCode === 'CZ-2026' || normalizedCode?.startsWith('CZ-')) {
-        console.log('🎯 Routing to thank you page with simulation=true')
+        console.log('🎯 Routing to /successor/thank-you?simulation=true')
         router.push('/successor/thank-you?simulation=true')
       } else {
-        console.log('🎯 Routing to thank you page')
+        console.log('🎯 Routing to /successor/thank-you')
         router.push('/successor/thank-you')
       }
     } catch (err: any) {
-      console.error('❌ Unexpected error during acceptance:', err)
-      setError(`An error occurred: ${err.message}`)
+      console.error('❌ Unexpected error:', err)
+      setError(`Unexpected error: ${err.message}`)
       setProcessing(false)
     }
   }
