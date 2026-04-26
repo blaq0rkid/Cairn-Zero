@@ -27,17 +27,17 @@ export default function SuccessorClaimPage() {
     const normalizedCode = claimCode.trim().toUpperCase()
 
     try {
-      // STEP 1: Lock portal context to SUCCESSOR (prevents founder redirect)
+      // STEP 1: Lock portal context (prevents founder redirect)
       sessionStorage.clear()
       sessionStorage.setItem('portal_context', 'successor')
       sessionStorage.setItem('claim_code', normalizedCode)
-      console.log('✅ Portal context locked: SUCCESSOR')
+      console.log('✅ Portal context: SUCCESSOR')
 
-      // STEP 2: Get auth state
+      // STEP 2: Get current auth state
       const { data: { user } } = await supabase.auth.getUser()
-      console.log(user ? `✅ Auth: ${user.email}` : '⚠️ Not authenticated')
+      console.log(user ? `✅ Authenticated: ${user.email}` : '⚠️ Not authenticated')
 
-      // STEP 3: Lookup successor record (no status filter for recovery)
+      // STEP 3: Find successor record
       console.log(`🔍 Looking up: ${normalizedCode}`)
       
       const { data: successor, error: lookupError } = await supabase
@@ -47,32 +47,32 @@ export default function SuccessorClaimPage() {
         .single()
 
       if (lookupError || !successor) {
-        console.error('❌ Invalid code')
+        console.error('❌ Invalid claim code')
         setError('Invalid claim code. Please check and try again.')
         setLoading(false)
         return
       }
 
-      console.log(`✅ Found: ${successor.id}`)
+      console.log(`✅ Record found: ${successor.id}`)
       console.log(`   Status: ${successor.status}`)
-      console.log(`   Legal: ${successor.legal_accepted_at ? 'Yes' : 'No'}`)
-      console.log(`   Linked: ${successor.successor_id ? 'Yes' : 'No'}`)
+      console.log(`   Legal accepted: ${successor.legal_accepted_at ? 'Yes' : 'No'}`)
+      console.log(`   Linked to user: ${successor.successor_id ? 'Yes' : 'No'}`)
 
-      // STEP 4: STATE RECOVERY - Fix mismatches
+      // STEP 4: State recovery - fix mismatches
       const fixes: any = {}
       
       if (successor.legal_accepted_at && successor.status === 'pending') {
-        console.log('🔧 Fix: status → active')
+        console.log('🔧 Fixing: status → active')
         fixes.status = 'active'
       }
       
       if (successor.legal_accepted_at && !successor.legal_version) {
-        console.log('🔧 Fix: legal_version')
+        console.log('🔧 Fixing: adding legal_version')
         fixes.legal_version = 'v1-2026-04-25'
       }
       
       if (successor.legal_accepted_at && !successor.invitation_token_used) {
-        console.log('🔧 Fix: token_used → true')
+        console.log('🔧 Fixing: token_used → true')
         fixes.invitation_token_used = true
       }
 
@@ -90,30 +90,40 @@ export default function SuccessorClaimPage() {
         }
       }
 
-      // STEP 5: AUTO-LINK successor_id (CRITICAL FIX for blank pages)
+      // STEP 5: CRITICAL SESSION BRIDGE - Link successor_id to auth.uid()
+      // This is the missing piece causing blank pages
       if (user && successor.status === 'active' && !successor.successor_id) {
-        console.log('🔗 AUTO-LINKING successor_id...')
+        console.log('🔗 BRIDGING SESSION: Writing successor_id...')
         
-        const { data: linked } = await supabase
+        const { data: linked, error: linkError } = await supabase
           .from('successors')
           .update({ successor_id: user.id })
           .eq('id', successor.id)
           .select()
           .single()
 
+        if (linkError) {
+          console.error('❌ Failed to bridge session:', linkError)
+          setError('Failed to establish session. Please try again.')
+          setLoading(false)
+          return
+        }
+
         if (linked) {
           successor.successor_id = linked.successor_id
-          console.log('✅ Auto-link successful')
+          console.log('✅ Session bridged successfully')
+          console.log(`   successor_id: ${linked.successor_id}`)
         }
       }
 
       // STEP 6: Store record ID for dashboard binding
       sessionStorage.setItem('successor_record_id', successor.id)
       sessionStorage.setItem('successor_verified', 'true')
+      console.log('✅ Session storage updated')
 
       // STEP 7: Route based on state
       if (successor.status === 'active' && successor.legal_accepted_at) {
-        console.log('✅ Already active → resumption')
+        console.log('✅ Already active → resumption flow')
         router.push('/successor/thank-you?resumption=true')
         return
       }
@@ -124,12 +134,12 @@ export default function SuccessorClaimPage() {
         return
       }
 
-      // STEP 8: Route to legal gateway
-      console.log('🎯 → legal gateway')
+      // STEP 8: Route to legal gateway for fresh acceptance
+      console.log('🎯 Routing to legal gateway')
       router.push('/successor/legal-gateway')
 
     } catch (err: any) {
-      console.error('❌ Error:', err.message)
+      console.error('❌ Unexpected error:', err.message)
       setError('An unexpected error occurred. Please try again.')
       setLoading(false)
     }
@@ -166,7 +176,7 @@ export default function SuccessorClaimPage() {
                 disabled={loading}
               />
               <p className="mt-2 text-xs text-slate-500">
-                This code was provided by the founder who designated you
+                Provided by the founder who designated you
               </p>
             </div>
 
@@ -182,7 +192,7 @@ export default function SuccessorClaimPage() {
               disabled={loading || !claimCode.trim()}
               className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {loading ? 'Processing...' : 'Continue to Successor Portal'}
+              {loading ? 'Processing...' : 'Continue'}
               {!loading && <ArrowRight size={20} />}
             </button>
           </form>
