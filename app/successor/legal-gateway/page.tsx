@@ -4,12 +4,13 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { Shield, CheckCircle } from 'lucide-react'
+import { Shield, CheckCircle, AlertCircle } from 'lucide-react'
 import Image from 'next/image'
 
 export default function LegalGatewayPage() {
   const [accepted, setAccepted] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
   const [successorData, setSuccessorData] = useState<any>(null)
   const router = useRouter()
   const supabase = createClientComponentClient()
@@ -21,6 +22,8 @@ export default function LegalGatewayPage() {
   const loadSuccessorData = async () => {
     const token = sessionStorage.getItem('successor_token')
     const email = sessionStorage.getItem('successor_email')
+
+    console.log('Legal Gateway: Checking session', { token, email })
 
     if (!token || !email) {
       router.push('/successor/access')
@@ -38,7 +41,8 @@ export default function LegalGatewayPage() {
       setSuccessorData(data)
       
       if (data.legal_accepted_at) {
-        router.push('/successor')
+        console.log('Legal Gateway: Already accepted, redirecting to thank you')
+        router.push('/successor/thank-you')
       }
     } else {
       router.push('/successor/access')
@@ -49,45 +53,73 @@ export default function LegalGatewayPage() {
     if (!accepted || !successorData) return
 
     setLoading(true)
+    setError('')
 
-    const { data: { user } } = await supabase.auth.getUser()
-    
-    let authEmail = successorData.email
-    
-    if (!user) {
-      const tempPassword = `temp_${Date.now()}_${Math.random().toString(36)}`
-      
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email: successorData.email,
-        password: tempPassword,
-      })
+    try {
+      console.log('Step 1: Starting acceptance process')
 
-      if (signUpError) {
-        alert('Authentication error: ' + signUpError.message)
-        setLoading(false)
-        return
-      }
-      
-      authEmail = signUpData.user?.email || successorData.email
-    }
-
-    const { error: updateError } = await supabase
-      .from('successors')
-      .update({
-        status: 'accepted',
+      // Atomic update - all fields in one transaction
+      const updatePayload = {
+        status: 'active',
+        invitation_token_used: true,
+        legal_version: 'v1-2026-04-25',
         legal_accepted_at: new Date().toISOString(),
-        legal_version: '1.0',
         digital_attestation_signed_at: new Date().toISOString()
-      })
-      .eq('id', successorData.id)
+      }
 
-    if (updateError) {
-      alert('Error updating status: ' + updateError.message)
+      console.log('Step 2: Update payload', updatePayload)
+
+      const { data: updatedSuccessor, error: updateError } = await supabase
+        .from('successors')
+        .update(updatePayload)
+        .eq('invitation_token', successorData.invitation_token)
+        .eq('email', successorData.email)
+        .select()
+        .single()
+
+      console.log('Step 3: Update result', { updatedSuccessor, updateError })
+
+      if (updateError) {
+        throw new Error(`Database update failed: ${updateError.message}`)
+      }
+
+      if (!updatedSuccessor) {
+        throw new Error('Update succeeded but no data returned')
+      }
+
+      // Verify all fields were set
+      const missingFields = []
+      if (updatedSuccessor.status !== 'active') missingFields.push('status')
+      if (!updatedSuccessor.invitation_token_used) missingFields.push('invitation_token_used')
+      if (!updatedSuccessor.legal_version) missingFields.push('legal_version')
+      if (!updatedSuccessor.legal_accepted_at) missingFields.push('legal_accepted_at')
+
+      if (missingFields.length > 0) {
+        console.error('Step 4: Missing fields', missingFields)
+        throw new Error(`Atomic update incomplete. Missing: ${missingFields.join(', ')}`)
+      }
+
+      console.log('Step 5: All fields verified, routing to thank you')
+
+      // Success - route to thank you page
+      const isTestKey = successorData.invitation_token?.toLowerCase() === 'cz-2026'
+      const destination = isTestKey 
+        ? '/successor/thank-you?simulation=true'
+        : '/successor/thank-you'
+
+      console.log('Step 6: Navigating to', destination)
+      router.push(destination)
+
+    } catch (err) {
+      console.error('Acceptance error:', err)
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred')
       setLoading(false)
-      return
     }
+  }
 
-    router.push('/successor/thank-you')
+  const handleTryAgain = () => {
+    setError('')
+    setLoading(false)
   }
 
   if (!successorData) {
@@ -145,10 +177,28 @@ export default function LegalGatewayPage() {
                 <li>You acknowledge this is a legally binding agreement</li>
               </ul>
               <p className="text-xs text-slate-500 mt-4">
-                Version 1.0 | Last Updated: {new Date().toLocaleDateString()}
+                Version: v1-2026-04-25 | Last Updated: April 25, 2026
               </p>
             </div>
           </div>
+
+          {error && (
+            <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4 mb-6">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="text-red-600 flex-shrink-0 mt-0.5" size={20} />
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-red-900 mb-2">Acceptance Failed</p>
+                  <p className="text-sm text-red-700 mb-4">{error}</p>
+                  <button
+                    onClick={handleTryAgain}
+                    className="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
+                  >
+                    Try Again
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="flex items-start gap-3 mb-6 p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
             <input
@@ -157,6 +207,7 @@ export default function LegalGatewayPage() {
               checked={accepted}
               onChange={(e) => setAccepted(e.target.checked)}
               className="mt-1 w-5 h-5 text-blue-600 border-2 border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
+              disabled={loading}
             />
             <label htmlFor="accept" className="text-sm text-slate-700 cursor-pointer">
               I have read and agree to the Successor Acceptance Declaration. I understand my 
