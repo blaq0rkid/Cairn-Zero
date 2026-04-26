@@ -19,27 +19,45 @@ export default function SuccessorAccessPage() {
     setLoading(true)
     setError('')
 
-    const cleanCode = keyCode.trim().toUpperCase()
+    try {
+      const cleanCode = keyCode.trim().toUpperCase()
+      console.log('Looking up code:', cleanCode)
 
-    const { data: successor, error: lookupError } = await supabase
-      .from('successors')
-      .select('*')
-      .ilike('invitation_token', cleanCode)
-      .single()
+      const { data: successors, error: lookupError } = await supabase
+        .from('successors')
+        .select('*')
+        .ilike('invitation_token', cleanCode)
 
-    if (lookupError || !successor) {
-      setError('Invalid key code. Please check and try again.')
+      console.log('Query result:', { successors, lookupError })
+
+      if (lookupError) {
+        console.error('Database error:', lookupError)
+        setError('Database error. Please try again.')
+        setLoading(false)
+        return
+      }
+
+      if (!successors || successors.length === 0) {
+        setError('Invalid key code. Please check and try again.')
+        setLoading(false)
+        return
+      }
+
+      const successor = successors[0]
+      console.log('Found successor:', successor)
+
+      sessionStorage.setItem('successor_token', successor.invitation_token)
+      sessionStorage.setItem('successor_email', successor.email)
+      
+      if (successor.legal_accepted_at) {
+        router.push('/successor')
+      } else {
+        router.push('/successor/legal-gateway')
+      }
+    } catch (err) {
+      console.error('Unexpected error:', err)
+      setError('An unexpected error occurred. Please try again.')
       setLoading(false)
-      return
-    }
-
-    sessionStorage.setItem('successor_token', successor.invitation_token)
-    sessionStorage.setItem('successor_email', successor.email)
-    
-    if (successor.legal_accepted_at) {
-      router.push('/successor')
-    } else {
-      router.push('/successor/legal-gateway')
     }
   }
 
