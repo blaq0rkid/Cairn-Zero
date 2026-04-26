@@ -36,7 +36,6 @@ export default function LegalGateway() {
       if (normalizedCode === 'CZ-2026' || normalizedCode.startsWith('CZ-')) {
         console.log('✅ Simulation mode activated:', normalizedCode)
         
-        // Try to find test successor record
         try {
           const { data, error } = await supabase
             .from('successors')
@@ -48,7 +47,7 @@ export default function LegalGateway() {
             console.log('✅ Test successor record found')
             setSuccessorData(data)
           } else {
-            console.log('⚠️ No test record found, will create session-only acceptance')
+            console.log('⚠️ No test record found')
           }
         } catch (err) {
           console.log('⚠️ Error looking up test record:', err)
@@ -96,9 +95,9 @@ export default function LegalGateway() {
     try {
       const normalizedCode = claimCode?.toUpperCase()
 
-      // CZ-2026 mode - try database write first, fall back to session
+      // CZ-2026 mode - write to database
       if (normalizedCode === 'CZ-2026' || normalizedCode?.startsWith('CZ-')) {
-        console.log('✅ CZ-2026: Attempting database write...')
+        console.log('✅ CZ-2026: Writing to database...')
         
         const { data: updateData, error: updateError } = await supabase
           .from('successors')
@@ -113,16 +112,17 @@ export default function LegalGateway() {
           .select()
 
         if (updateError) {
-          console.log('⚠️ Database write failed, using session storage:', updateError.message)
-          // Fallback to session storage
-          sessionStorage.setItem('legal_accepted', 'true')
-          sessionStorage.setItem('legal_accepted_at', new Date().toISOString())
-          sessionStorage.setItem('legal_version', LEGAL_VERSION)
-        } else {
-          console.log('✅ Database write successful:', updateData)
+          console.error('❌ Database write failed:', updateError)
+          setError('Failed to record acceptance. Please try again.')
+          setProcessing(false)
+          return
         }
         
-        router.push('/successor?welcome=true&simulation=true')
+        console.log('✅ Database updated successfully:', updateData)
+        
+        // Clear session and route to thank you page
+        sessionStorage.clear()
+        router.push('/successor/thank-you?simulation=true')
         return
       }
 
@@ -144,9 +144,9 @@ export default function LegalGateway() {
 
       console.log('✅ Legal acceptance recorded in database')
       sessionStorage.clear()
-      router.push('/successor/login?welcome=true')
+      router.push('/successor/thank-you')
     } catch (err: any) {
-      console.error('Error recording acceptance:', err)
+      console.error('❌ Error recording acceptance:', err)
       setError('Failed to record acceptance. Please try again.')
       setProcessing(false)
     }
@@ -230,7 +230,6 @@ export default function LegalGateway() {
     <div className="min-h-screen bg-slate-50 p-4">
       <div className="max-w-3xl mx-auto py-8">
         <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-8">
-          {/* Header */}
           <div className="text-center mb-8">
             <FileText className="mx-auto mb-4 text-blue-600" size={56} />
             <h1 className="text-2xl font-semibold text-slate-900 mb-2">
@@ -241,7 +240,6 @@ export default function LegalGateway() {
             </p>
           </div>
 
-          {/* Successor Info */}
           {successorData && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
               <p className="text-sm text-slate-700 mb-1">
@@ -256,7 +254,6 @@ export default function LegalGateway() {
             </div>
           )}
 
-          {/* Legal Text */}
           <div className="bg-slate-50 border border-slate-200 rounded-lg p-6 mb-6 max-h-96 overflow-y-auto">
             <div className="flex flex-col gap-4 text-sm text-slate-700">
               <div>
@@ -296,7 +293,6 @@ export default function LegalGateway() {
             </div>
           </div>
 
-          {/* Acceptance Checkboxes */}
           <div className="bg-white border-2 border-slate-300 rounded-lg p-4 mb-6 flex flex-col gap-3">
             <label className="flex items-start gap-3 cursor-pointer">
               <input
@@ -322,7 +318,6 @@ export default function LegalGateway() {
             </label>
           </div>
 
-          {/* Action Buttons */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <button
               onClick={handleAcceptance}
@@ -344,7 +339,6 @@ export default function LegalGateway() {
           </div>
         </div>
 
-        {/* Decline Modal */}
         {showDeclineModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-lg max-w-md w-full p-6">
