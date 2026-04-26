@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { Shield, Loader2, AlertTriangle, FileText, User, Calendar } from 'lucide-react'
+import { Shield, Loader2, AlertTriangle, FileText, User, Calendar, ArrowRight } from 'lucide-react'
 
 export default function SuccessorDashboard() {
   const router = useRouter()
@@ -12,6 +12,12 @@ export default function SuccessorDashboard() {
   const [loading, setLoading] = useState(true)
   const [successorData, setSuccessorData] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
+  const [debugInfo, setDebugInfo] = useState<string[]>([])
+
+  const addDebug = (msg: string) => {
+    console.log(msg)
+    setDebugInfo(prev => [...prev, msg])
+  }
 
   useEffect(() => {
     initializeDashboard()
@@ -19,49 +25,52 @@ export default function SuccessorDashboard() {
 
   const initializeDashboard = async () => {
     try {
-      // CRITICAL: Check portal context first
+      addDebug('🔍 Initializing dashboard...')
+
+      // Check portal context
       const portalContext = sessionStorage.getItem('portal_context')
-      console.log('🔍 Portal context:', portalContext)
+      addDebug(`Portal context: ${portalContext}`)
 
       if (portalContext !== 'successor') {
-        console.log('⚠️ Invalid portal context, setting to successor')
         sessionStorage.setItem('portal_context', 'successor')
+        addDebug('⚠️ Fixed portal context to successor')
       }
 
       // Get authenticated user
       const { data: { user }, error: authError } = await supabase.auth.getUser()
 
       if (authError || !user) {
-        console.log('⚠️ Not authenticated, redirecting to claim')
+        addDebug('❌ Not authenticated, redirecting to claim')
         router.push('/claim')
         return
       }
 
-      console.log('✅ User authenticated:', user.email)
+      addDebug(`✅ Authenticated: ${user.email}`)
 
-      // DATA BINDING: Get successor record ID from session (set during claim)
-      const successorRecordId = sessionStorage.getItem('successor_record_id')
-
+      // MULTI-STRATEGY LOOKUP
       let successor = null
 
-      // STRATEGY 1: Fetch by stored record ID (most reliable)
-      if (successorRecordId) {
-        console.log('📋 Fetching by stored record ID:', successorRecordId)
+      // STRATEGY 1: Try stored record ID from session
+      const storedRecordId = sessionStorage.getItem('successor_record_id')
+      if (storedRecordId) {
+        addDebug(`📋 Strategy 1: Fetching by stored ID: ${storedRecordId}`)
         const { data, error } = await supabase
           .from('successors')
           .select('*, profiles!successors_founder_id_fkey(email, full_name)')
-          .eq('id', successorRecordId)
+          .eq('id', storedRecordId)
           .single()
 
         if (!error && data) {
           successor = data
-          console.log('✅ Successor loaded by record ID')
+          addDebug('✅ Strategy 1: Success')
+        } else {
+          addDebug('⚠️ Strategy 1: Failed')
         }
       }
 
-      // STRATEGY 2: Fetch by successor_id (if linked)
+      // STRATEGY 2: Try by successor_id (if linked)
       if (!successor) {
-        console.log('📋 Fetching by successor_id (auth.uid)')
+        addDebug('📋 Strategy 2: Fetching by successor_id')
         const { data, error } = await supabase
           .from('successors')
           .select('*, profiles!successors_founder_id_fkey(email, full_name)')
@@ -70,13 +79,15 @@ export default function SuccessorDashboard() {
 
         if (!error && data) {
           successor = data
-          console.log('✅ Successor loaded by successor_id')
+          addDebug('✅ Strategy 2: Success')
+        } else {
+          addDebug('⚠️ Strategy 2: Failed')
         }
       }
 
-      // STRATEGY 3: Fetch by email (fallback)
+      // STRATEGY 3: Try by email (last resort)
       if (!successor) {
-        console.log('📋 Fetching by email (fallback)')
+        addDebug('📋 Strategy 3: Fetching by email')
         const { data, error } = await supabase
           .from('successors')
           .select('*, profiles!successors_founder_id_fkey(email, full_name)')
@@ -85,41 +96,49 @@ export default function SuccessorDashboard() {
 
         if (!error && data) {
           successor = data
-          console.log('✅ Successor loaded by email')
+          addDebug('✅ Strategy 3: Success')
 
-          // AUTO-LINK if found by email but not linked
+          // AUTO-LINK if found by email
           if (!successor.successor_id) {
-            console.log('🔗 Auto-linking successor_id...')
+            addDebug('🔗 Auto-linking successor_id...')
             await supabase
               .from('successors')
               .update({ successor_id: user.id })
               .eq('id', successor.id)
             
             successor.successor_id = user.id
+            addDebug('✅ Auto-link complete')
           }
+        } else {
+          addDebug('❌ Strategy 3: Failed')
         }
       }
 
-      // NO VALID SUCCESSOR FOUND
+      // NO SUCCESSOR FOUND
       if (!successor) {
-        console.log('❌ No successor record found')
+        addDebug('❌ All strategies failed - no successor record found')
         setError('No successor record found. Please enter your claim code.')
         setLoading(false)
         return
       }
 
+      addDebug(`✅ Successor loaded: ${successor.id}`)
+      addDebug(`   Status: ${successor.status}`)
+      addDebug(`   Legal accepted: ${successor.legal_accepted_at ? 'Yes' : 'No'}`)
+
       // LEGAL GATING CHECK
       if (successor.status !== 'active' || !successor.legal_accepted_at) {
-        console.log('⚠️ Legal acceptance required')
+        addDebug('⚠️ Legal acceptance required, redirecting to claim')
         router.push('/claim')
         return
       }
 
-      console.log('✅ Successor access verified:', successor)
+      addDebug('✅ Access verified, rendering dashboard')
       setSuccessorData(successor)
       setLoading(false)
 
     } catch (err: any) {
+      addDebug(`❌ Unexpected error: ${err.message}`)
       console.error('Error initializing dashboard:', err)
       setError('Failed to load dashboard. Please try again.')
       setLoading(false)
@@ -140,16 +159,31 @@ export default function SuccessorDashboard() {
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
-        <div className="max-w-md bg-red-50 border-2 border-red-200 rounded-lg p-6 text-center">
-          <AlertTriangle className="mx-auto mb-4 text-red-600" size={48} />
-          <h2 className="text-xl font-semibold text-red-900 mb-2">Access Error</h2>
-          <p className="text-red-700 mb-4">{error}</p>
-          <button
-            onClick={() => router.push('/claim')}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            Enter Claim Code
-          </button>
+        <div className="max-w-md w-full">
+          <div className="bg-red-50 border-2 border-red-200 rounded-lg p-6 text-center">
+            <AlertTriangle className="mx-auto mb-4 text-red-600" size={48} />
+            <h2 className="text-xl font-semibold text-red-900 mb-2">Access Error</h2>
+            <p className="text-red-700 mb-4">{error}</p>
+            
+            {debugInfo.length > 0 && (
+              <div className="bg-white border border-red-200 rounded p-3 mb-4 max-h-40 overflow-y-auto">
+                <p className="text-xs font-semibold text-slate-700 mb-2">Debug Log:</p>
+                <div className="text-xs text-slate-600 font-mono text-left space-y-1">
+                  {debugInfo.map((msg, idx) => (
+                    <div key={idx}>{msg}</div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <button
+              onClick={() => router.push('/claim')}
+              className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2"
+            >
+              Enter Claim Code
+              <ArrowRight size={20} />
+            </button>
+          </div>
         </div>
       </div>
     )
@@ -228,6 +262,20 @@ export default function SuccessorDashboard() {
               </p>
             </div>
           </div>
+
+          {/* Debug Info (dev only) */}
+          {debugInfo.length > 0 && (
+            <details className="mt-6">
+              <summary className="text-xs text-slate-500 cursor-pointer">Show debug log</summary>
+              <div className="bg-slate-50 border border-slate-200 rounded p-3 mt-2">
+                <div className="text-xs text-slate-600 font-mono space-y-1">
+                  {debugInfo.map((msg, idx) => (
+                    <div key={idx}>{msg}</div>
+                  ))}
+                </div>
+              </div>
+            </details>
+          )}
         </div>
       </div>
     </div>
