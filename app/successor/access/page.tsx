@@ -19,12 +19,12 @@ export default function SuccessorAccessPage() {
     setLoading(true)
     setError('')
 
-    const cleanCode = keyCode.trim().toLowerCase()
+    const cleanCode = keyCode.trim().toUpperCase()
 
     const { data: successor, error: lookupError } = await supabase
       .from('successors')
       .select('*')
-      .eq('invitation_token', cleanCode)
+      .ilike('invitation_token', cleanCode)
       .single()
 
     if (lookupError || !successor) {
@@ -33,7 +33,7 @@ export default function SuccessorAccessPage() {
       return
     }
 
-    sessionStorage.setItem('successor_token', cleanCode)
+    sessionStorage.setItem('successor_token', successor.invitation_token)
     sessionStorage.setItem('successor_email', successor.email)
     
     if (successor.legal_accepted_at) {
@@ -83,7 +83,7 @@ export default function SuccessorAccessPage() {
                   type="text"
                   value={keyCode}
                   onChange={(e) => setKeyCode(e.target.value)}
-                  placeholder="cz-2026"
+                  placeholder="CZ-2026"
                   className="w-full px-6 py-5 text-center text-2xl font-mono border-2 border-slate-300 rounded-lg focus:border-blue-500 focus:ring-4 focus:ring-blue-200 outline-none transition-all uppercase"
                   required
                   autoFocus
