@@ -133,7 +133,7 @@ export default function FounderDashboard() {
   }
 
   const confirmDelete = async () => {
-    if (!deletingId) return
+    if (!deletingId || !founderId) return
 
     const { error } = await supabase
       .from('successors')
@@ -145,8 +145,9 @@ export default function FounderDashboard() {
       console.error(error)
       setDeletingId(null)
     } else {
-      // Reload the page to show empty state
-      window.location.reload()
+      // Immediately update local state
+      setSuccessors(prev => prev.filter(s => s.id !== deletingId))
+      setDeletingId(null)
     }
   }
 
