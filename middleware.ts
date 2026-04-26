@@ -8,7 +8,7 @@ export async function middleware(request: NextRequest) {
   const supabase = createMiddlewareClient({ req: request, res })
   const path = request.nextUrl.pathname
 
-  // Public routes - no authentication required
+  // Public routes - no auth required
   const publicPaths = [
     '/',
     '/login',
@@ -18,29 +18,23 @@ export async function middleware(request: NextRequest) {
     '/successor/thank-you',
     '/successor/declined',
     '/successor/access-error',
-    '/auth/callback',
-    '/pricing',
-    '/faq',
-    '/terms',
-    '/privacy'
+    '/auth/callback'
   ]
 
-  const isPublicPath = publicPaths.some(publicPath => path === publicPath)
-
-  if (isPublicPath) {
+  if (publicPaths.some(p => path === p)) {
     return res
   }
 
-  // Check for simulation or resumption bypass
+  // Bypass for simulation/resumption
   const isSimulation = request.nextUrl.searchParams.get('simulation') === 'true'
   const isResumption = request.nextUrl.searchParams.get('resumption') === 'true'
   
   if (path.startsWith('/successor') && (isSimulation || isResumption)) {
-    console.log('✅ Middleware: Bypassing auth for simulation/resumption')
+    console.log('✅ Middleware: Bypass for simulation/resumption')
     return res
   }
 
-  // Check authentication
+  // Check auth
   const { data: { session } } = await supabase.auth.getSession()
 
   if (!session) {
@@ -50,64 +44,55 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // CRITICAL: Role-aware routing for dual-role users
-  // Successor routes take priority when accessed from successor context
-  
+  // ROLE-AWARE ROUTING: Successor routes take priority
   if (path.startsWith('/successor')) {
-    console.log('🔍 Middleware: Processing successor route')
+    console.log('🔍 Middleware: Successor route')
     
-    // Check if user has a successor record
     const { data: successor } = await supabase
       .from('successors')
-      .select('id, status, legal_accepted_at, successor_id')
+      .select('id, status, legal_accepted_at')
       .eq('email', session.user.email)
       .single()
 
     if (!successor) {
-      console.log('⚠️ Middleware: No successor record, redirect to claim')
+      console.log('⚠️ No successor record → /claim')
       return NextResponse.redirect(new URL('/claim', request.url))
     }
 
-    // Allow access to thank-you if legal_accepted_at exists (Safe Harbor override)
+    // Allow thank-you if legal_accepted_at exists (Safe Harbor override)
     if (path.includes('/thank-you') && successor.legal_accepted_at) {
-      console.log('✅ Middleware: Legal accepted, allowing thank-you access')
+      console.log('✅ Legal accepted → allow thank-you')
       return res
     }
 
-    // Enforce legal gating for main dashboard
+    // Enforce legal gating for dashboard
     if (path === '/successor' || path.startsWith('/successor/dashboard')) {
       if (successor.status !== 'active' || !successor.legal_accepted_at) {
-        console.log('⚠️ Middleware: Legal acceptance required')
+        console.log('⚠️ Legal acceptance required')
         return NextResponse.redirect(new URL('/claim', request.url))
       }
     }
 
-    console.log('✅ Middleware: Successor access granted')
+    console.log('✅ Successor access granted')
     return res
   }
 
-  // Founder routes - check if user is actually a successor
-  if (path.startsWith('/dashboard') || path.startsWith('/founder')) {
-    // Check if this user has a successor record
+  // Founder routes - check for dual-role misroute
+  if (path.startsWith('/dashboard')) {
     const { data: successor } = await supabase
       .from('successors')
       .select('id, status')
       .eq('email', session.user.email)
       .single()
 
-    // If they have an active successor record and no explicit founder intent,
-    // this might be a misroute (but allow explicit navigation)
-    if (successor && successor.status === 'active') {
+    // If active successor coming from claim flow, redirect to successor
+    if (successor?.status === 'active') {
       const referer = request.headers.get('referer')
-      const isFromClaim = referer?.includes('/claim') || referer?.includes('/successor')
-      
-      if (isFromClaim) {
-        console.log('⚠️ Middleware: Successor context detected, redirecting to successor portal')
+      if (referer?.includes('/claim') || referer?.includes('/successor')) {
+        console.log('⚠️ Successor context detected → /successor')
         return NextResponse.redirect(new URL('/successor', request.url))
       }
     }
-
-    return res
   }
 
   return res
