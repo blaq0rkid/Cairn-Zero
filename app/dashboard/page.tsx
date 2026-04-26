@@ -12,6 +12,7 @@ export default function FounderDashboard() {
   const [loading, setLoading] = useState(true)
   const [founderId, setFounderId] = useState<string | null>(null)
   const [showAddForm, setShowAddForm] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [newSuccessor, setNewSuccessor] = useState({
     email: '',
     full_name: '',
@@ -128,19 +129,27 @@ export default function FounderDashboard() {
   }
 
   const deleteSuccessorSlot = async (successorId: string) => {
-    if (!confirm('Are you sure you want to delete this successor slot? This action cannot be undone.')) {
-      return
-    }
+    setDeletingId(successorId)
+  }
+
+  const confirmDelete = async () => {
+    if (!deletingId) return
 
     const { error } = await supabase
       .from('successors')
       .delete()
-      .eq('id', successorId)
+      .eq('id', deletingId)
 
     if (error) {
-      alert('Failed to delete successor slot')
+      alert('Failed to delete successor slot: ' + error.message)
       console.error(error)
     }
+    
+    setDeletingId(null)
+  }
+
+  const cancelDelete = () => {
+    setDeletingId(null)
   }
 
   const getStatusBadge = (successor: any) => {
@@ -337,13 +346,35 @@ export default function FounderDashboard() {
                     )}
                   </div>
 
-                  <button
-                    onClick={() => deleteSuccessorSlot(successor.id)}
-                    className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-700 border-2 border-red-200 rounded-lg hover:bg-red-100 transition-colors text-sm font-medium"
-                  >
-                    <Trash2 size={16} />
-                    Delete Slot
-                  </button>
+                  {deletingId === successor.id ? (
+                    <div className="bg-red-50 border-2 border-red-300 rounded-lg p-4">
+                      <p className="text-sm text-red-900 font-semibold mb-3">
+                        Are you sure you want to delete this successor slot? This action cannot be undone.
+                      </p>
+                      <div className="flex gap-3">
+                        <button
+                          onClick={confirmDelete}
+                          className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+                        >
+                          Yes, Delete
+                        </button>
+                        <button
+                          onClick={cancelDelete}
+                          className="flex-1 px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors text-sm font-medium"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => deleteSuccessorSlot(successor.id)}
+                      className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-700 border-2 border-red-200 rounded-lg hover:bg-red-100 transition-colors text-sm font-medium"
+                    >
+                      <Trash2 size={16} />
+                      Delete Slot
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
