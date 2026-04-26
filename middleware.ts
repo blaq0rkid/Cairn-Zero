@@ -20,6 +20,7 @@ export async function middleware(request: NextRequest) {
     '/successor/thank-you',
     '/successor/declined',
     '/successor/access-error',
+    '/successor/debug',  // ADD THIS LINE
     '/auth/callback'
   ]
 
