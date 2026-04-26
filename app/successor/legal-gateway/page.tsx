@@ -42,6 +42,18 @@ export default function LegalGateway() {
         if (data && !error) {
           console.log('✅ Successor record found:', data)
           setSuccessorData(data)
+          
+          // IDEMPOTENCY CHECK: If already active with legal acceptance, route to thank you
+          if (data.status === 'active' && data.legal_accepted_at) {
+            console.log('✅ Already accepted - routing to thank you page')
+            sessionStorage.clear()
+            if (normalizedCode === 'CZ-2026' || normalizedCode?.startsWith('CZ-')) {
+              router.push('/successor/thank-you?simulation=true')
+            } else {
+              router.push('/successor/thank-you')
+            }
+            return
+          }
         } else {
           console.log('⚠️ No successor record found')
         }
@@ -66,7 +78,7 @@ export default function LegalGateway() {
     try {
       const normalizedCode = claimCode?.toUpperCase()
 
-      // ATOMIC UPDATE PAYLOAD - All required fields
+      // ATOMIC UPDATE PAYLOAD
       const atomicPayload = {
         status: 'active',
         invitation_token_used: true,
@@ -78,27 +90,23 @@ export default function LegalGateway() {
       console.log('🔄 Starting idempotent atomic update')
       console.log('📦 Payload:', atomicPayload)
 
-      // IDEMPOTENT LOGIC: Update record by ID where status is NOT already 'active'
-      // This allows overwrite of partial updates (legal_accepted_at may already exist)
-      // Removed legal_accepted_at IS NULL constraint to enable recovery
-      
       let updateData = null
       let updateError = null
 
-      // Try by invitation_token first (primary path)
+      // PRIMARY: Update by invitation_token where status != 'active'
       if (normalizedCode) {
         const result = await supabase
           .from('successors')
           .update(atomicPayload)
           .eq('invitation_token', normalizedCode)
-          .neq('status', 'active')  // Only update if not already active (idempotency)
+          .neq('status', 'active')
           .select()
         
         updateData = result.data
         updateError = result.error
       }
 
-      // Fallback: Try by email for test records (CZ-2026)
+      // FALLBACK: Try by email for test records (CZ-2026)
       if ((!updateData || updateData.length === 0) && (normalizedCode === 'CZ-2026' || normalizedCode?.startsWith('CZ-'))) {
         console.log('⚠️ No match by token, trying test record by email...')
         const result = await supabase
@@ -108,7 +116,7 @@ export default function LegalGateway() {
             invitation_token: normalizedCode
           })
           .eq('email', 'test.successor@example.com')
-          .neq('status', 'active')  // Idempotency check
+          .neq('status', 'active')
           .select()
         
         updateData = result.data
@@ -123,31 +131,59 @@ export default function LegalGateway() {
         return
       }
 
-      // Handle no matching records (may already be active - check idempotency)
+      // IDEMPOTENCY: Check if already active (no rows updated)
       if (!updateData || updateData.length === 0) {
         console.log('⚠️ No rows updated - checking if already active...')
         
-        // Check if record already exists with status='active'
         const { data: existingRecord } = await supabase
           .from('successors')
           .select('id, status, legal_accepted_at, legal_version, invitation_token_used')
           .or(`invitation_token.eq.${normalizedCode},email.eq.test.successor@example.com`)
           .single()
 
-        if (existingRecord?.status === 'active' && existingRecord?.legal_accepted_at) {
-          console.log('✅ Record already active - idempotent success')
-          sessionStorage.clear()
+        if (existingRecord) {
+          console.log('📋 Existing record state:', existingRecord)
           
-          if (normalizedCode === 'CZ-2026' || normalizedCode?.startsWith('CZ-')) {
-            router.push('/successor/thank-you?simulation=true')
-          } else {
-            router.push('/successor/thank-you')
+          // If already active and accepted, proceed to thank you
+          if (existingRecord.status === 'active' && existingRecord.legal_accepted_at) {
+            console.log('✅ Already active and accepted - idempotent success')
+            sessionStorage.clear()
+            
+            if (normalizedCode === 'CZ-2026' || normalizedCode?.startsWith('CZ-')) {
+              router.push('/successor/thank-you?simulation=true')
+            } else {
+              router.push('/successor/thank-you')
+            }
+            return
           }
-          return
+          
+          // If invitation_token_used is true but not active, help user proceed
+          if (existingRecord.invitation_token_used && existingRecord.legal_accepted_at) {
+            console.log('⚠️ Token used but not active - attempting to activate...')
+            
+            // Force status to active
+            const { data: forceUpdate, error: forceError } = await supabase
+              .from('successors')
+              .update({ status: 'active' })
+              .eq('id', existingRecord.id)
+              .select()
+            
+            if (!forceError && forceUpdate?.[0]) {
+              console.log('✅ Forced activation successful')
+              sessionStorage.clear()
+              
+              if (normalizedCode === 'CZ-2026' || normalizedCode?.startsWith('CZ-')) {
+                router.push('/successor/thank-you?simulation=true')
+              } else {
+                router.push('/successor/thank-you')
+              }
+              return
+            }
+          }
         }
 
-        console.error('❌ No matching record found and not already active')
-        setError('No matching successor record found. Please verify your claim code.')
+        console.error('❌ No matching record found and unable to recover')
+        setError('Unable to update successor record. Please contact support.')
         setProcessing(false)
         return
       }
@@ -175,10 +211,8 @@ export default function LegalGateway() {
       console.log('  - Legal version:', updated.legal_version)
       console.log('  - Accepted at:', updated.legal_accepted_at)
       
-      // Clear session storage
       sessionStorage.clear()
       
-      // Route to thank you page
       if (normalizedCode === 'CZ-2026' || normalizedCode?.startsWith('CZ-')) {
         console.log('🎯 Routing to /successor/thank-you?simulation=true')
         router.push('/successor/thank-you?simulation=true')
