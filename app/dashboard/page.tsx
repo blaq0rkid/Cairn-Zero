@@ -7,9 +7,9 @@ import { Shield, Users, Clock, CheckCircle, XCircle, AlertCircle, LogOut } from 
 
 export default function FounderDashboard() {
   const supabase = createClientComponentClient();
-  const [successors, setSuccessors] = useState([]);
+  const [successors, setSuccessors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [founderId, setFounderId] = useState(null);
+  const [founderId, setFounderId] = useState<string | null>(null);
 
   useEffect(() => {
     initializeDashboard();
@@ -32,7 +32,7 @@ export default function FounderDashboard() {
     }
   };
 
-  const loadSuccessors = async (founderId) => {
+  const loadSuccessors = async (founderId: string) => {
     const { data, error } = await supabase
       .from('successors')
       .select('*')
@@ -45,7 +45,7 @@ export default function FounderDashboard() {
     }
   };
 
-  const subscribeToRealtimeUpdates = (founderId) => {
+  const subscribeToRealtimeUpdates = (founderId: string) => {
     const channel = supabase
       .channel('successor-changes')
       .on(
@@ -84,7 +84,7 @@ export default function FounderDashboard() {
     window.location.href = '/login';
   };
 
-  const deleteSuccessorSlot = async (successorId) => {
+  const deleteSuccessorSlot = async (successorId: string) => {
     if (!confirm('Are you sure you want to delete this successor slot? This action cannot be undone.')) {
       return;
     }
@@ -100,8 +100,8 @@ export default function FounderDashboard() {
     }
   };
 
-  const getStatusBadge = (successor) => {
-    const statusConfig = {
+  const getStatusBadge = (successor: any) => {
+    const statusConfig: Record<string, { icon: any; color: string; label: string }> = {
       active: { icon: CheckCircle, color: 'bg-green-100 text-green-800 border-green-300', label: 'Active' },
       accepted: { icon: CheckCircle, color: 'bg-blue-100 text-blue-800 border-blue-300', label: 'Accepted' },
       pending: { icon: Clock, color: 'bg-yellow-100 text-yellow-800 border-yellow-300', label: 'Pending' },
