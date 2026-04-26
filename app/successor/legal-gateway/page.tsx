@@ -32,9 +32,28 @@ export default function LegalGateway() {
       setClaimCode(storedCode)
       const normalizedCode = storedCode.toUpperCase()
 
-      // For simulation keys, proceed without database lookup
+      // For CZ-2026, look up the test successor record
       if (normalizedCode === 'CZ-2026' || normalizedCode.startsWith('CZ-')) {
         console.log('✅ Simulation mode activated:', normalizedCode)
+        
+        // Try to find test successor record
+        try {
+          const { data, error } = await supabase
+            .from('successors')
+            .select('*, profiles!successors_founder_id_fkey(email, full_name)')
+            .eq('invitation_token', normalizedCode)
+            .single()
+
+          if (data && !error) {
+            console.log('✅ Test successor record found')
+            setSuccessorData(data)
+          } else {
+            console.log('⚠️ No test record found, will create session-only acceptance')
+          }
+        } catch (err) {
+          console.log('⚠️ Error looking up test record:', err)
+        }
+        
         setLoading(false)
         return
       }
@@ -77,12 +96,32 @@ export default function LegalGateway() {
     try {
       const normalizedCode = claimCode?.toUpperCase()
 
-      // Simulation mode
+      // CZ-2026 mode - try database write first, fall back to session
       if (normalizedCode === 'CZ-2026' || normalizedCode?.startsWith('CZ-')) {
-        console.log('✅ Simulation: Legal acceptance recorded')
-        sessionStorage.setItem('legal_accepted', 'true')
-        sessionStorage.setItem('legal_accepted_at', new Date().toISOString())
-        sessionStorage.setItem('legal_version', LEGAL_VERSION)
+        console.log('✅ CZ-2026: Attempting database write...')
+        
+        const { data: updateData, error: updateError } = await supabase
+          .from('successors')
+          .update({
+            status: 'active',
+            legal_accepted_at: new Date().toISOString(),
+            legal_version: LEGAL_VERSION,
+            accessed_at: new Date().toISOString(),
+            invitation_token_used: true
+          })
+          .eq('invitation_token', normalizedCode)
+          .select()
+
+        if (updateError) {
+          console.log('⚠️ Database write failed, using session storage:', updateError.message)
+          // Fallback to session storage
+          sessionStorage.setItem('legal_accepted', 'true')
+          sessionStorage.setItem('legal_accepted_at', new Date().toISOString())
+          sessionStorage.setItem('legal_version', LEGAL_VERSION)
+        } else {
+          console.log('✅ Database write successful:', updateData)
+        }
+        
         router.push('/successor?welcome=true&simulation=true')
         return
       }
