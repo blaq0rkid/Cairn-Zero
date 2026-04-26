@@ -4,7 +4,9 @@
 import { useEffect, useState } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { useRouter } from 'next/navigation'
-import { Shield, CheckCircle, XCircle, FileText } from 'lucide-react'
+import { Shield, CheckCircle, XCircle, FileText, AlertCircle } from 'lucide-react'
+
+const LEGAL_VERSION = '2026-04-25-v1'
 
 export default function LegalGateway() {
   const supabase = createClientComponentClient()
@@ -13,53 +15,85 @@ export default function LegalGateway() {
   const [claimCode, setClaimCode] = useState<string | null>(null)
   const [successorData, setSuccessorData] = useState<any>(null)
   const [showDeclineModal, setShowDeclineModal] = useState(false)
-  const [acceptedTerms, setAcceptedTerms] = useState(false)
+  const [acceptCheckbox1, setAcceptCheckbox1] = useState(false)
+  const [acceptCheckbox2, setAcceptCheckbox2] = useState(false)
   const [processing, setProcessing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    // Retrieve claim code from session storage
-    const storedCode = sessionStorage.getItem('claim_code')
-    const storedData = sessionStorage.getItem('successor_data')
+    const initializeLegalGateway = async () => {
+      const storedCode = sessionStorage.getItem('claim_code')
 
-    if (!storedCode) {
-      console.log('❌ No claim code found, redirecting to /claim')
-      router.push('/claim')
-      return
+      if (!storedCode) {
+        router.push('/claim')
+        return
+      }
+
+      setClaimCode(storedCode)
+      const normalizedCode = storedCode.toUpperCase()
+
+      // For simulation keys, proceed without database lookup
+      if (normalizedCode === 'CZ-2026' || normalizedCode.startsWith('CZ-')) {
+        console.log('✅ Simulation mode activated:', normalizedCode)
+        setLoading(false)
+        return
+      }
+
+      // Look up real successor record
+      try {
+        const { data, error } = await supabase
+          .from('successors')
+          .select('*, profiles!successors_founder_id_fkey(email, full_name)')
+          .eq('invitation_token', storedCode)
+          .eq('invitation_token_used', false)
+          .single()
+
+        if (error || !data) {
+          setError('Invalid or expired claim code. Please contact your founder.')
+          setLoading(false)
+          return
+        }
+
+        setSuccessorData(data)
+        setLoading(false)
+      } catch (err) {
+        console.error('Error loading successor data:', err)
+        setError('An error occurred. Please try again.')
+        setLoading(false)
+      }
     }
 
-    setClaimCode(storedCode)
-    
-    if (storedData) {
-      setSuccessorData(JSON.parse(storedData))
-    }
-
-    setLoading(false)
+    initializeLegalGateway()
   }, [])
 
   const handleAcceptance = async () => {
-    if (!acceptedTerms) {
-      alert('Please accept the terms by checking the boxes below')
+    if (!acceptCheckbox1 || !acceptCheckbox2) {
+      alert('Please accept both declarations by checking the boxes')
       return
     }
 
     setProcessing(true)
 
     try {
-      // If this is a simulation key (CZ-2026), bypass database update
-      if (claimCode?.startsWith('CZ-')) {
-        console.log('✅ Simulation mode: Legal acceptance recorded')
+      const normalizedCode = claimCode?.toUpperCase()
+
+      // Simulation mode
+      if (normalizedCode === 'CZ-2026' || normalizedCode?.startsWith('CZ-')) {
+        console.log('✅ Simulation: Legal acceptance recorded')
         sessionStorage.setItem('legal_accepted', 'true')
         sessionStorage.setItem('legal_accepted_at', new Date().toISOString())
-        router.push('/successor?welcome=true')
+        sessionStorage.setItem('legal_version', LEGAL_VERSION)
+        router.push('/successor?welcome=true&simulation=true')
         return
       }
 
-      // Update successor record with legal acceptance
+      // Real successor - update database
       const { error: updateError } = await supabase
         .from('successors')
         .update({
           status: 'active',
           legal_accepted_at: new Date().toISOString(),
+          legal_version: LEGAL_VERSION,
           accessed_at: new Date().toISOString(),
           invitation_token_used: true,
           invitation_token: null
@@ -70,16 +104,11 @@ export default function LegalGateway() {
       if (updateError) throw updateError
 
       console.log('✅ Legal acceptance recorded in database')
-      
-      // Clear session storage
-      sessionStorage.removeItem('claim_code')
-      sessionStorage.removeItem('successor_data')
-
-      // Redirect to successor login to create account
+      sessionStorage.clear()
       router.push('/successor/login?welcome=true')
     } catch (err: any) {
-      console.error('❌ Error recording acceptance:', err)
-      alert('An error occurred. Please try again.')
+      console.error('Error recording acceptance:', err)
+      setError('Failed to record acceptance. Please try again.')
       setProcessing(false)
     }
   }
@@ -88,13 +117,15 @@ export default function LegalGateway() {
     setProcessing(true)
 
     try {
-      if (!claimCode?.startsWith('CZ-')) {
-        // Update database for real successor
+      const normalizedCode = claimCode?.toUpperCase()
+
+      if (normalizedCode !== 'CZ-2026' && !normalizedCode?.startsWith('CZ-')) {
         const { error: updateError } = await supabase
           .from('successors')
           .update({
             status: 'declined',
             legal_declined_at: new Date().toISOString(),
+            legal_version: LEGAL_VERSION,
             declined_at: new Date().toISOString(),
             invitation_token_used: true,
             invitation_token: null
@@ -118,118 +149,135 @@ export default function LegalGateway() {
         }
       }
 
-      // Clear session storage
       sessionStorage.clear()
       router.push('/successor/declined')
     } catch (err: any) {
-      console.error('❌ Error recording declination:', err)
-      alert('An error occurred. Please try again.')
+      console.error('Error recording declination:', err)
+      setError('Failed to record declination. Please try again.')
       setProcessing(false)
     }
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="text-center">
           <Shield className="mx-auto mb-4 text-blue-600 animate-pulse" size={48} />
-          <p className="text-gray-600">Loading legal gateway...</p>
+          <p className="text-slate-600">Loading legal gateway...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+        <div className="max-w-md bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+          <AlertCircle className="mx-auto mb-4 text-red-600" size={48} />
+          <h2 className="text-xl font-semibold text-red-900 mb-2">Error</h2>
+          <p className="text-red-700 mb-4">{error}</p>
+          <button
+            onClick={() => router.push('/claim')}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+          >
+            Return to Claim Entry
+          </button>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
+    <div className="min-h-screen bg-slate-50 p-4">
       <div className="max-w-3xl mx-auto py-8">
-        <div className="bg-white rounded-lg shadow-lg p-8">
+        <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-8">
           {/* Header */}
           <div className="text-center mb-8">
-            <FileText className="mx-auto mb-4 text-blue-600" size={64} />
-            <h1 className="text-3xl font-bold mb-2">Legal Gateway</h1>
-            <p className="text-gray-600">Please review and accept the following declaration</p>
+            <FileText className="mx-auto mb-4 text-blue-600" size={56} />
+            <h1 className="text-2xl font-semibold text-slate-900 mb-2">
+              Successor Acceptance Declaration
+            </h1>
+            <p className="text-sm text-slate-600">
+              Effective Date: April 25, 2026 | Provider: Cairn Zero
+            </p>
           </div>
 
           {/* Successor Info */}
           {successorData && (
-            <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 mb-6">
-              <p className="text-sm text-gray-700">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+              <p className="text-sm text-slate-700 mb-1">
                 <strong>Designated by:</strong> {successorData.profiles?.full_name || successorData.profiles?.email}
               </p>
-              <p className="text-sm text-gray-700">
+              <p className="text-sm text-slate-700 mb-1">
                 <strong>Your name:</strong> {successorData.full_name}
               </p>
-              <p className="text-sm text-gray-700">
+              <p className="text-sm text-slate-700">
                 <strong>Slot:</strong> #{successorData.sequence_order}
               </p>
             </div>
           )}
 
-          {/* Legal Declaration */}
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 mb-6 max-h-96 overflow-y-auto">
-            <h2 className="font-bold text-lg mb-4">Successor Acceptance Declaration</h2>
-            <p className="text-xs text-gray-600 mb-4">Effective Date: April 25, 2026 | Provider: Cairn Zero</p>
-
-            <div className="flex flex-col gap-4 text-sm">
+          {/* Legal Text */}
+          <div className="bg-slate-50 border border-slate-200 rounded-lg p-6 mb-6 max-h-96 overflow-y-auto">
+            <div className="flex flex-col gap-4 text-sm text-slate-700">
               <div>
-                <p className="font-semibold mb-1">1. Fiduciary Intent</p>
-                <p className="text-gray-700">I understand that I have been designated as a key Successor for the business continuity of the Founder. I accept the responsibility to access the "Archive" only under the conditions specified in the Succession Bridge protocol.</p>
+                <p className="font-semibold mb-2">1. Fiduciary Intent</p>
+                <p>I understand that I have been designated as a key Successor for the business continuity of the Founder. I accept the responsibility to access the "Archive" only under the conditions specified in the Succession Bridge protocol.</p>
               </div>
 
               <div>
-                <p className="font-semibold mb-1">2. Duty of Care</p>
-                <p className="text-gray-700">I agree to maintain the security of my access credentials (including physical hardware keys if provided) and to use the accessed information solely for the preservation and continuity of the Founder's business and legacy.</p>
+                <p className="font-semibold mb-2">2. Duty of Care</p>
+                <p>I agree to maintain the security of my access credentials (including physical hardware keys if provided) and to use the accessed information solely for the preservation and continuity of the Founder's business and legacy.</p>
               </div>
 
               <div>
-                <p className="font-semibold mb-1">3. Zero-Knowledge Acknowledgment</p>
-                <p className="text-gray-700">I acknowledge that Cairn Zero does not have access to the data I will be retrieving and that I am solely responsible for the "Sovereignty" of the keys provided to me.</p>
+                <p className="font-semibold mb-2">3. Zero-Knowledge Acknowledgment</p>
+                <p>I acknowledge that Cairn Zero does not have access to the data I will be retrieving and that I am solely responsible for the "Sovereignty" of the keys provided to me.</p>
               </div>
 
               <div>
-                <p className="font-semibold mb-1">4. Confidentiality</p>
-                <p className="text-gray-700">I agree to keep all information retrieved through the Successor Portal strictly confidential, except as required for the execution of my duties as a Successor.</p>
+                <p className="font-semibold mb-2">4. Confidentiality</p>
+                <p>I agree to keep all information retrieved through the Successor Portal strictly confidential, except as required for the execution of my duties as a Successor.</p>
               </div>
 
               <div>
-                <p className="font-semibold mb-1">5. Zero-Knowledge and Sovereignty Disclosure</p>
-                <p className="text-gray-700">I understand that Cairn Zero is a "Certainty-Only" provider and does not store passwords or provide recovery services. If I lose my credentials after a Succession Event, the data may be permanently lost.</p>
+                <p className="font-semibold mb-2">5. Zero-Knowledge and Sovereignty Disclosure</p>
+                <p>I understand that Cairn Zero is a "Certainty-Only" provider and does not store passwords or provide recovery services for the Archive. If I lose my credentials or hardware keys after a Succession Event has occurred, the data within the Archive may be permanently and irretrievably lost.</p>
               </div>
 
               <div>
-                <p className="font-semibold mb-1">6. Revocation and Termination</p>
-                <p className="text-gray-700">I acknowledge that the Founder retains the absolute right to revoke my successor status at any time without prior notice.</p>
+                <p className="font-semibold mb-2">6. Revocation and Termination</p>
+                <p>I acknowledge that my status is granted at the sole discretion of the Founder. The Founder retains the absolute right to revoke Successor status at any time without prior notice. Upon revocation, my access tokens and invitation links will be immediately invalidated.</p>
               </div>
 
               <div>
-                <p className="font-semibold mb-1">7. Limitation of Liability</p>
-                <p className="text-gray-700">I agree to indemnify and hold harmless Cairn Zero from any and all claims, losses, or damages resulting from my handling of the Archive assets.</p>
+                <p className="font-semibold mb-2">7. Limitation of Liability</p>
+                <p>I agree to indemnify and hold harmless Cairn Zero from any and all claims, losses, or damages resulting from my handling of the Archive assets. Cairn Zero provides the bridge; the Successor and Founder are solely responsible for the traffic crossing it.</p>
               </div>
             </div>
           </div>
 
           {/* Acceptance Checkboxes */}
-          <div className="mb-6 bg-white border-2 border-gray-300 rounded-lg p-4 flex flex-col gap-3">
+          <div className="bg-white border-2 border-slate-300 rounded-lg p-4 mb-6 flex flex-col gap-3">
             <label className="flex items-start gap-3 cursor-pointer">
               <input
                 type="checkbox"
-                checked={acceptedTerms}
-                onChange={(e) => setAcceptedTerms(e.target.checked)}
+                checked={acceptCheckbox1}
+                onChange={(e) => setAcceptCheckbox1(e.target.checked)}
                 className="mt-1 w-5 h-5 flex-shrink-0"
               />
-              <span className="text-sm font-medium">
+              <span className="text-sm font-medium text-slate-800">
                 I have read the Successor Acceptance Declaration and agree to the responsibilities of being a designated Successor.
               </span>
             </label>
             <label className="flex items-start gap-3 cursor-pointer">
               <input
                 type="checkbox"
-                checked={acceptedTerms}
-                onChange={(e) => setAcceptedTerms(e.target.checked)}
+                checked={acceptCheckbox2}
+                onChange={(e) => setAcceptCheckbox2(e.target.checked)}
                 className="mt-1 w-5 h-5 flex-shrink-0"
-                disabled
               />
-              <span className="text-sm font-medium text-gray-700">
+              <span className="text-sm font-medium text-slate-800">
                 I understand that Cairn Zero has no access to this data and that I am now a critical link in the Sovereignty Chain.
               </span>
             </label>
@@ -239,36 +287,38 @@ export default function LegalGateway() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <button
               onClick={handleAcceptance}
-              disabled={!acceptedTerms || processing}
-              className="px-6 py-4 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold text-lg transition-colors flex items-center justify-center gap-2"
+              disabled={!acceptCheckbox1 || !acceptCheckbox2 || processing}
+              className="flex items-center justify-center gap-2 px-6 py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              <CheckCircle size={24} />
+              <CheckCircle size={20} />
               {processing ? 'Processing...' : 'Accept & Continue'}
             </button>
 
             <button
               onClick={() => setShowDeclineModal(true)}
               disabled={processing}
-              className="px-6 py-4 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 disabled:opacity-50 font-semibold text-lg transition-colors flex items-center justify-center gap-2"
+              className="flex items-center justify-center gap-2 px-6 py-3 bg-slate-200 text-slate-700 font-medium rounded-lg hover:bg-slate-300 disabled:opacity-50 transition-colors"
             >
-              <XCircle size={24} />
+              <XCircle size={20} />
               Decline
             </button>
           </div>
         </div>
 
-        {/* Decline Confirmation Modal */}
+        {/* Decline Modal */}
         {showDeclineModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-lg max-w-md w-full p-6">
-              <h3 className="text-xl font-bold mb-4">Confirm Declination</h3>
-              <p className="text-gray-700 mb-6">
-                Are you sure you want to decline this successor designation? This action cannot be undone, and the founder will be notified.
+              <h3 className="text-xl font-semibold text-slate-900 mb-4">
+                Confirm Declination
+              </h3>
+              <p className="text-slate-700 mb-6">
+                Are you sure you want to decline this successor designation? This action cannot be undone, and the founder will be notified immediately.
               </p>
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowDeclineModal(false)}
-                  className="flex-1 px-4 py-2 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                  className="flex-1 px-4 py-2 border-2 border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50"
                 >
                   Cancel
                 </button>
