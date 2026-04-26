@@ -19,44 +19,57 @@ export default function SuccessorAccessPage() {
     setLoading(true)
     setError('')
 
+    const timeoutId = setTimeout(() => {
+      setError('Request timed out. Please check your connection and try again.')
+      setLoading(false)
+    }, 10000)
+
     try {
       const cleanCode = keyCode.trim().toUpperCase()
-      console.log('Looking up code:', cleanCode)
+      console.log('Step 1: Looking up code:', cleanCode)
 
-      const { data: successors, error: lookupError } = await supabase
+      const { data, error: lookupError } = await supabase
         .from('successors')
         .select('*')
-        .ilike('invitation_token', cleanCode)
+        .eq('invitation_token', cleanCode)
 
-      console.log('Query result:', { successors, lookupError })
+      clearTimeout(timeoutId)
+
+      console.log('Step 2: Query complete', { data, lookupError })
 
       if (lookupError) {
-        console.error('Database error:', lookupError)
-        setError('Database error. Please try again.')
+        console.error('Step 3: Database error:', lookupError)
+        setError(`Database error: ${lookupError.message}`)
         setLoading(false)
         return
       }
 
-      if (!successors || successors.length === 0) {
+      if (!data || data.length === 0) {
+        console.log('Step 4: No match found')
         setError('Invalid key code. Please check and try again.')
         setLoading(false)
         return
       }
 
-      const successor = successors[0]
-      console.log('Found successor:', successor)
+      const successor = data[0]
+      console.log('Step 5: Found successor:', successor.email)
 
       sessionStorage.setItem('successor_token', successor.invitation_token)
       sessionStorage.setItem('successor_email', successor.email)
       
+      console.log('Step 6: Routing to next page')
+      
       if (successor.legal_accepted_at) {
+        console.log('Step 7: Going to /successor')
         router.push('/successor')
       } else {
+        console.log('Step 7: Going to /successor/legal-gateway')
         router.push('/successor/legal-gateway')
       }
     } catch (err) {
-      console.error('Unexpected error:', err)
-      setError('An unexpected error occurred. Please try again.')
+      clearTimeout(timeoutId)
+      console.error('Step ERROR: Unexpected error:', err)
+      setError(`An error occurred: ${err instanceof Error ? err.message : 'Unknown error'}`)
       setLoading(false)
     }
   }
@@ -105,6 +118,7 @@ export default function SuccessorAccessPage() {
                   className="w-full px-6 py-5 text-center text-2xl font-mono border-2 border-slate-300 rounded-lg focus:border-blue-500 focus:ring-4 focus:ring-blue-200 outline-none transition-all uppercase"
                   required
                   autoFocus
+                  disabled={loading}
                 />
               </div>
 
@@ -123,6 +137,12 @@ export default function SuccessorAccessPage() {
                 {!loading && <ArrowRight size={24} />}
               </button>
             </form>
+
+            <div className="mt-4 text-center">
+              <p className="text-xs text-slate-500">
+                Debug: Check browser console (F12) for detailed logs
+              </p>
+            </div>
           </div>
         </div>
       </div>
