@@ -95,7 +95,7 @@ export default function FounderDashboard() {
 
   const getNextSequenceOrder = () => {
     if (successors.length === 0) return 1
-    const maxSeq = Math.max(...successors.map(s => s.sequence_order || 0))
+    const maxSeq = Math.max(...successors.map(s => s.sequence_order || s.slot_number || 0))
     return maxSeq + 1
   }
 
@@ -113,6 +113,7 @@ export default function FounderDashboard() {
         email: newSuccessor.email,
         full_name: newSuccessor.full_name,
         sequence_order: nextSequence,
+        slot_number: nextSequence,
         invitation_token: invitationToken,
         status: 'pending'
       })
@@ -301,7 +302,7 @@ export default function FounderDashboard() {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="px-2 py-1 bg-slate-200 text-slate-700 text-xs font-semibold rounded">
-                          Slot {successor.sequence_order}
+                          Slot {successor.sequence_order || successor.slot_number}
                         </span>
                       </div>
                       <h3 className="font-semibold text-slate-900 mb-1">
