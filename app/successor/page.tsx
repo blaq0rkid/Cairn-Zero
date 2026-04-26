@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { Shield, LogOut, User, Calendar, FileText } from 'lucide-react'
+import { Shield, LogOut, User, Calendar, FileText, BookOpen } from 'lucide-react'
 import Image from 'next/image'
 
 export default function SuccessorDashboard() {
@@ -164,14 +164,25 @@ export default function SuccessorDashboard() {
           </div>
 
           <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-6">
-            <h2 className="font-semibold text-slate-900 mb-3 text-lg">Guidepost Index</h2>
+            <div className="flex items-center gap-2 mb-4">
+              <BookOpen className="text-blue-600" size={24} />
+              <h2 className="font-semibold text-slate-900 text-lg">Guidepost Index</h2>
+            </div>
             <p className="text-sm text-slate-700 mb-4">
               Information and instructions left for you by the founder
             </p>
             <div className="bg-white border border-slate-200 rounded-lg p-6">
-              <p className="text-sm text-slate-600 italic text-center">
-                Guidepost content will be displayed here once configured by the founder.
-              </p>
+              {successorData.guidepost_instructions ? (
+                <div className="prose prose-sm max-w-none">
+                  <pre className="whitespace-pre-wrap text-sm text-slate-700 font-sans">
+                    {successorData.guidepost_instructions}
+                  </pre>
+                </div>
+              ) : (
+                <p className="text-sm text-slate-600 italic text-center">
+                  No guidepost instructions have been configured yet.
+                </p>
+              )}
             </div>
           </div>
         </div>
