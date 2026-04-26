@@ -76,8 +76,8 @@ export default function LegalGateway() {
       const normalizedCode = claimCode?.toUpperCase()
       const { data: { user } } = await supabase.auth.getUser()
 
-      // ATOMIC UPDATE PAYLOAD - All fields in one transaction
-      const atomicPayload = {
+      // ATOMIC UPDATE PAYLOAD - Define with proper typing
+      const atomicPayload: Record<string, any> = {
         status: 'active',
         invitation_token_used: true,
         legal_version: LEGAL_VERSION,
