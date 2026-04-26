@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { Shield, LogOut, User, Calendar, FileText } from 'lucide-react'
-import Header from '@/components/Header'
+import Image from 'next/image'
 
 export default function SuccessorDashboard() {
   const router = useRouter()
@@ -18,41 +18,83 @@ export default function SuccessorDashboard() {
   }, [])
 
   const loadSuccessorData = async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      router.push('/claim')
+    const token = sessionStorage.getItem('successor_token')
+    const email = sessionStorage.getItem('successor_email')
+
+    console.log('Dashboard: Checking sessionStorage', { token, email })
+
+    if (!token || !email) {
+      console.log('Dashboard: No session data, redirecting to access')
+      router.push('/successor/access')
       return
     }
 
-    const { data: successor } = await supabase
+    const { data: successor, error } = await supabase
       .from('successors')
       .select('*, profiles!successors_founder_id_fkey(email, full_name)')
-      .eq('email', user.email)
+      .eq('invitation_token', token)
+      .eq('email', email)
       .single()
 
-    if (successor) {
-      setSuccessorData(successor)
+    console.log('Dashboard: Query result', { successor, error })
+
+    if (error || !successor) {
+      console.log('Dashboard: Invalid token/email, redirecting')
+      sessionStorage.clear()
+      router.push('/successor/access')
+      return
     }
+
+    if (!successor.legal_accepted_at) {
+      console.log('Dashboard: Legal not accepted, redirecting to legal gateway')
+      router.push('/successor/legal-gateway')
+      return
+    }
+
+    console.log('Dashboard: Success, showing dashboard')
+    setSuccessorData(successor)
     setLoading(false)
   }
 
   const handleLogout = async () => {
     sessionStorage.clear()
     await supabase.auth.signOut()
-    router.push('/claim')
+    router.push('/successor/access')
   }
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="text-center">
+          <Shield className="mx-auto mb-4 text-blue-600 animate-pulse" size={48} />
+          <p className="text-slate-600">Loading dashboard...</p>
+        </div>
       </div>
     )
   }
 
+  if (!successorData) {
+    return null
+  }
+
   return (
     <div className="min-h-screen bg-slate-50">
-      <Header />
+      <header className="bg-white border-b border-slate-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center gap-3">
+              <Image 
+                src="https://cdn.marblism.com/JsSjox_nhRL.webp" 
+                alt="Cairn Zero" 
+                width={40} 
+                height={40}
+                className="object-contain"
+              />
+              <span className="text-xl font-bold text-slate-900">Cairn Zero</span>
+            </div>
+          </div>
+        </div>
+      </header>
 
       <div className="max-w-6xl mx-auto p-4 py-8">
         <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-8">
@@ -83,7 +125,9 @@ export default function SuccessorDashboard() {
                 <Shield className="text-green-600" size={20} />
                 <p className="text-xs font-semibold text-green-900 uppercase">Status</p>
               </div>
-              <p className="text-2xl font-bold text-green-700">Active</p>
+              <p className="text-2xl font-bold text-green-700 capitalize">
+                {successorData.status}
+              </p>
             </div>
 
             <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
@@ -115,7 +159,7 @@ export default function SuccessorDashboard() {
               <h2 className="font-semibold text-slate-900">Designated By</h2>
             </div>
             <p className="text-slate-700">
-              {successorData?.profiles?.full_name || successorData?.profiles?.email}
+              {successorData?.profiles?.full_name || successorData?.profiles?.email || 'Unknown'}
             </p>
           </div>
 
