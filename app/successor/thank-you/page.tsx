@@ -1,91 +1,129 @@
 
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { CheckCircle, ArrowRight } from 'lucide-react'
+import { CheckCircle, ArrowRight, LogOut } from 'lucide-react'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 
 export default function SuccessorThankYou() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const supabase = createClientComponentClient()
   const isSimulation = searchParams?.get('simulation') === 'true'
+  const [countdown, setCountdown] = useState(5)
 
   useEffect(() => {
-    // Auto-redirect after 5 seconds
-    const timer = setTimeout(() => {
-      if (isSimulation) {
-        router.push('/successor?welcome=true&simulation=true')
-      } else {
-        router.push('/successor/login?welcome=true')
-      }
-    }, 5000)
+    // Countdown timer
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer)
+          handleContinue()
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
 
-    return () => clearTimeout(timer)
-  }, [isSimulation])
+    return () => clearInterval(timer)
+  }, [])
+
+  const handleContinue = () => {
+    if (isSimulation) {
+      router.push('/successor?simulation=true')
+    } else {
+      router.push('/successor/login?welcome=true')
+    }
+  }
+
+  const handleExitSimulation = async () => {
+    // Clear any simulation data
+    sessionStorage.clear()
+    // Sign out if authenticated
+    await supabase.auth.signOut()
+    router.push('/claim')
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-green-50 to-slate-50 flex items-center justify-center p-4">
       <div className="max-w-lg w-full">
-        <div className="bg-white rounded-xl shadow-lg border border-green-200 p-8">
+        <div className="bg-white rounded-xl shadow-lg border-2 border-green-200 p-8">
+          {/* Success Icon */}
           <div className="text-center mb-6">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
-              <CheckCircle className="text-green-600" size={40} />
+            <div className="inline-flex items-center justify-center w-20 h-20 bg-green-100 rounded-full mb-4">
+              <CheckCircle className="text-green-600" size={48} />
             </div>
             <h1 className="text-3xl font-bold text-slate-900 mb-2">
-              Thank You
+              Succession Confirmed
             </h1>
             <p className="text-lg text-slate-600">
-              Your acceptance has been recorded
+              You are now the designated successor for this vault
             </p>
           </div>
 
-          <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
-            <h2 className="font-semibold text-slate-900 mb-3">What happens next:</h2>
-            <ul className="flex flex-col gap-2 text-sm text-slate-700">
-              <li className="flex items-start gap-2">
-                <span className="text-green-600 mt-0.5">✓</span>
+          {/* Status Updates */}
+          <div className="bg-green-50 border-2 border-green-200 rounded-lg p-6 mb-6">
+            <h2 className="font-semibold text-slate-900 mb-3">What just happened:</h2>
+            <ul className="flex flex-col gap-3 text-sm text-slate-700">
+              <li className="flex items-start gap-3">
+                <CheckCircle className="text-green-600 flex-shrink-0 mt-0.5" size={18} />
                 <span>Your legal acceptance has been timestamped and recorded</span>
               </li>
-              <li className="flex items-start gap-2">
-                <span className="text-green-600 mt-0.5">✓</span>
+              <li className="flex items-start gap-3">
+                <CheckCircle className="text-green-600 flex-shrink-0 mt-0.5" size={18} />
+                <span>Your successor status has been activated</span>
+              </li>
+              <li className="flex items-start gap-3">
+                <CheckCircle className="text-green-600 flex-shrink-0 mt-0.5" size={18} />
                 <span>The founder has been notified of your acceptance</span>
               </li>
-              <li className="flex items-start gap-2">
-                <span className="text-green-600 mt-0.5">✓</span>
-                <span>Your successor status is now active</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-green-600 mt-0.5">✓</span>
-                <span>You can now access your successor dashboard</span>
+              <li className="flex items-start gap-3">
+                <CheckCircle className="text-green-600 flex-shrink-0 mt-0.5" size={18} />
+                <span>The Sovereign Dashboard is now unlocked</span>
               </li>
             </ul>
           </div>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+          {/* Information Box */}
+          <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 mb-6">
             <p className="text-sm text-slate-700">
-              <strong>Note:</strong> You are now a critical link in the Sovereignty Chain. Your role is to maintain business continuity according to the founder's documented instructions.
+              <strong>What's Next:</strong> You now have access to the Guidepost Index - the information and instructions left by the founder for business continuity.
             </p>
           </div>
 
+          {/* Simulation Notice */}
+          {isSimulation && (
+            <div className="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-4 mb-6">
+              <p className="text-sm text-slate-700 mb-3">
+                <strong>Simulation Mode Active:</strong> You are testing the succession flow with a demonstration key.
+              </p>
+              <button
+                onClick={handleExitSimulation}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-yellow-600 text-white font-medium rounded-lg hover:bg-yellow-700 transition-colors"
+              >
+                <LogOut size={18} />
+                Exit Simulation
+              </button>
+            </div>
+          )}
+
+          {/* Continue Button */}
           <button
-            onClick={() => {
-              if (isSimulation) {
-                router.push('/successor?welcome=true&simulation=true')
-              } else {
-                router.push('/successor/login?welcome=true')
-              }
-            }}
-            className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+            onClick={handleContinue}
+            className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors text-lg"
           >
-            Continue to Dashboard
-            <ArrowRight size={20} />
+            Continue to Sovereign Dashboard
+            <ArrowRight size={24} />
           </button>
 
-          <p className="text-center text-xs text-slate-500 mt-4">
-            Redirecting automatically in 5 seconds...
+          {/* Auto-redirect Notice */}
+          <p className="text-center text-sm text-slate-500 mt-4">
+            Redirecting automatically in {countdown} second{countdown !== 1 ? 's' : ''}...
           </p>
         </div>
 
+        {/* Footer */}
         <p className="mt-6 text-center text-xs text-slate-400">
           Cairn Zero - Certainty. Sovereignty. Continuity.
         </p>
