@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { Shield, Users, Clock, CheckCircle, XCircle, AlertCircle, LogOut, Plus, Trash2 } from 'lucide-react'
-import Header from '@/components/Header'
+import Image from 'next/image'
 
 export default function FounderDashboard() {
   const supabase = createClientComponentClient()
@@ -46,7 +46,7 @@ export default function FounderDashboard() {
       .from('successors')
       .select('*')
       .eq('founder_id', founderId)
-      .order('slot_number', { ascending: true })
+      .order('sequence_order', { ascending: true })
 
     if (!error && data) {
       setSuccessors(data)
@@ -69,7 +69,7 @@ export default function FounderDashboard() {
           console.log('🔔 Real-time update:', payload)
           
           if (payload.eventType === 'INSERT') {
-            setSuccessors(prev => [...prev, payload.new].sort((a, b) => a.slot_number - b.slot_number))
+            setSuccessors(prev => [...prev, payload.new].sort((a, b) => (a.sequence_order || 0) - (b.sequence_order || 0)))
           } else if (payload.eventType === 'UPDATE') {
             setSuccessors(prev => 
               prev.map(s => s.id === payload.new.id ? payload.new : s)
@@ -93,17 +93,17 @@ export default function FounderDashboard() {
     window.location.href = '/login'
   }
 
-  const getNextSlotNumber = () => {
+  const getNextSequenceOrder = () => {
     if (successors.length === 0) return 1
-    const maxSlot = Math.max(...successors.map(s => s.slot_number || 0))
-    return maxSlot + 1
+    const maxSeq = Math.max(...successors.map(s => s.sequence_order || 0))
+    return maxSeq + 1
   }
 
   const handleAddSuccessor = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!founderId) return
 
-    const nextSlot = getNextSlotNumber()
+    const nextSequence = getNextSequenceOrder()
     const invitationToken = `CZ-${Date.now().toString().slice(-4)}`
     
     const { error } = await supabase
@@ -112,7 +112,7 @@ export default function FounderDashboard() {
         founder_id: founderId,
         email: newSuccessor.email,
         full_name: newSuccessor.full_name,
-        slot_number: nextSlot,
+        sequence_order: nextSequence,
         invitation_token: invitationToken,
         status: 'pending'
       })
@@ -176,7 +176,23 @@ export default function FounderDashboard() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Header />
+      {/* Header with Logo */}
+      <header className="bg-white border-b border-slate-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center gap-3">
+              <Image 
+                src="https://cdn.marblism.com/JsSjox_nhRL.webp" 
+                alt="Cairn Zero" 
+                width={40} 
+                height={40}
+                className="object-contain"
+              />
+              <span className="text-xl font-bold text-slate-900">Cairn Zero</span>
+            </div>
+          </div>
+        </div>
+      </header>
 
       <div className="max-w-6xl mx-auto p-4 py-8">
         <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-8">
@@ -285,7 +301,7 @@ export default function FounderDashboard() {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="px-2 py-1 bg-slate-200 text-slate-700 text-xs font-semibold rounded">
-                          Slot {successor.slot_number}
+                          Slot {successor.sequence_order}
                         </span>
                       </div>
                       <h3 className="font-semibold text-slate-900 mb-1">
