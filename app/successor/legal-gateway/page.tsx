@@ -6,7 +6,7 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { useRouter } from 'next/navigation'
 import { Shield, CheckCircle, XCircle, FileText, AlertCircle } from 'lucide-react'
 
-const LEGAL_VERSION = '2026-04-25-v1'
+const LEGAL_VERSION = 'v1-2026-04-25'
 
 export default function LegalGateway() {
   const supabase = createClientComponentClient()
@@ -32,7 +32,6 @@ export default function LegalGateway() {
       setClaimCode(storedCode)
       const normalizedCode = storedCode.toUpperCase()
 
-      // Look up successor record (works for both test and real codes)
       try {
         const { data, error } = await supabase
           .from('successors')
@@ -67,77 +66,81 @@ export default function LegalGateway() {
     try {
       const normalizedCode = claimCode?.toUpperCase()
 
-      // For CZ-2026 or test codes, update by email or token
-      if (normalizedCode === 'CZ-2026' || normalizedCode?.startsWith('CZ-')) {
-        console.log('✅ CZ-2026: Updating database...')
-        
-        // Try to update by invitation_token first, then by email as fallback
-        let updateResult = await supabase
+      // ATOMIC UPDATE: All fields must be set in one operation
+      const updatePayload = {
+        status: 'active',
+        invitation_token_used: true,
+        legal_version: LEGAL_VERSION,
+        legal_accepted_at: new Date().toISOString(),
+        accessed_at: new Date().toISOString()
+      }
+
+      console.log('🔄 Performing atomic database update:', updatePayload)
+
+      // Try update by invitation_token first
+      let { data: updateData, error: updateError } = await supabase
+        .from('successors')
+        .update(updatePayload)
+        .eq('invitation_token', normalizedCode)
+        .select()
+
+      // Fallback: Update by email for test records
+      if (!updateData || updateData.length === 0) {
+        console.log('⚠️ No match by token, trying by email...')
+        const result = await supabase
           .from('successors')
           .update({
-            status: 'active',
-            legal_accepted_at: new Date().toISOString(),
-            legal_version: LEGAL_VERSION,
-            accessed_at: new Date().toISOString(),
-            invitation_token_used: true
+            ...updatePayload,
+            invitation_token: normalizedCode
           })
-          .eq('invitation_token', normalizedCode)
+          .eq('email', 'test.successor@example.com')
           .select()
-
-        // If no rows affected, try updating by email (for test records)
-        if (!updateResult.data || updateResult.data.length === 0) {
-          console.log('⚠️ No match by token, trying by email...')
-          updateResult = await supabase
-            .from('successors')
-            .update({
-              status: 'active',
-              legal_accepted_at: new Date().toISOString(),
-              legal_version: LEGAL_VERSION,
-              accessed_at: new Date().toISOString(),
-              invitation_token: normalizedCode,
-              invitation_token_used: true
-            })
-            .eq('email', 'test.successor@example.com')
-            .select()
-        }
-
-        if (updateResult.error) {
-          console.error('❌ Database write failed:', updateResult.error)
-          setError('Failed to record acceptance. Please try again.')
-          setProcessing(false)
-          return
-        }
         
-        console.log('✅ Database updated successfully:', updateResult.data)
-        
-        // Clear session and route to thank you page
-        sessionStorage.clear()
-        router.push('/successor/thank-you?simulation=true')
+        updateData = result.data
+        updateError = result.error
+      }
+
+      if (updateError) {
+        console.error('❌ Atomic update failed:', updateError)
+        setError(`Database update failed: ${updateError.message}`)
+        setProcessing(false)
         return
       }
 
-      // Real successor - update database
-      const { error: updateError } = await supabase
-        .from('successors')
-        .update({
-          status: 'active',
-          legal_accepted_at: new Date().toISOString(),
-          legal_version: LEGAL_VERSION,
-          accessed_at: new Date().toISOString(),
-          invitation_token_used: true,
-          invitation_token: null
-        })
-        .eq('invitation_token', claimCode)
-        .eq('invitation_token_used', false)
+      if (!updateData || updateData.length === 0) {
+        console.error('❌ No rows updated')
+        setError('Failed to update successor record. No matching record found.')
+        setProcessing(false)
+        return
+      }
 
-      if (updateError) throw updateError
+      // Verify all fields were set
+      const updated = updateData[0]
+      console.log('✅ Database update successful:', updated)
 
-      console.log('✅ Legal acceptance recorded in database')
+      if (updated.status !== 'active' || 
+          !updated.invitation_token_used || 
+          !updated.legal_version || 
+          !updated.legal_accepted_at) {
+        console.error('❌ Partial update detected:', updated)
+        setError('Atomic update failed: Not all fields were set correctly.')
+        setProcessing(false)
+        return
+      }
+
+      console.log('✅ All fields verified - routing to thank you page')
+      
+      // Clear session and route to thank you page
       sessionStorage.clear()
-      router.push('/successor/thank-you')
+      
+      if (normalizedCode === 'CZ-2026' || normalizedCode?.startsWith('CZ-')) {
+        router.push('/successor/thank-you?simulation=true')
+      } else {
+        router.push('/successor/thank-you')
+      }
     } catch (err: any) {
-      console.error('❌ Error recording acceptance:', err)
-      setError('Failed to record acceptance. Please try again.')
+      console.error('❌ Unexpected error:', err)
+      setError(`An error occurred: ${err.message}`)
       setProcessing(false)
     }
   }
@@ -202,8 +205,8 @@ export default function LegalGateway() {
       <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
         <div className="max-w-md bg-red-50 border border-red-200 rounded-lg p-6 text-center">
           <AlertCircle className="mx-auto mb-4 text-red-600" size={48} />
-          <h2 className="text-xl font-semibold text-red-900 mb-2">Error</h2>
-          <p className="text-red-700 mb-4">{error}</p>
+          <h2 className="text-xl font-semibold text-red-900 mb-2">Update Failed</h2>
+          <p className="text-red-700 mb-4 text-sm">{error}</p>
           <button
             onClick={() => router.push('/claim')}
             className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
