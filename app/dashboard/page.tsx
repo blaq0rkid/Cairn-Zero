@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { Shield, Users, Clock, CheckCircle, XCircle, AlertCircle, LogOut, Plus, Trash2 } from 'lucide-react'
-import Image from 'next/image'
+import Header from '@/components/Header'
 
 export default function FounderDashboard() {
   const supabase = createClientComponentClient()
@@ -176,19 +176,19 @@ export default function FounderDashboard() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Header with Logo */}
-      <header className="bg-white border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-3">
-              <Image 
-                src="https://cdn.marblism.com/JsSjox_nhRL.webp" 
-                alt="Cairn Zero" 
-                width={40} 
-                height={40}
-                className="object-contain"
-              />
-              <span className="text-xl font-bold text-slate-900">Cairn Zero</span>
+      <Header />
+
+      <div className="max-w-6xl mx-auto p-4 py-8">
+        <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-8">
+          <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-200">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full">
+                <Shield className="text-blue-600" size={32} />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold text-slate-900">Founder Dashboard</h1>
+                <p className="text-slate-600 mt-1">Manage your succession plan</p>
+              </div>
             </div>
             <button
               onClick={handleLogout}
@@ -197,20 +197,6 @@ export default function FounderDashboard() {
               <LogOut size={20} />
               Log Out
             </button>
-          </div>
-        </div>
-      </header>
-
-      <div className="max-w-6xl mx-auto p-4 py-8">
-        <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-8">
-          <div className="flex items-center gap-4 mb-8 pb-6 border-b border-slate-200">
-            <div className="flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full">
-              <Shield className="text-blue-600" size={32} />
-            </div>
-            <div className="flex-1">
-              <h1 className="text-3xl font-bold text-slate-900">Founder Dashboard</h1>
-              <p className="text-slate-600 mt-1">Manage your succession plan</p>
-            </div>
           </div>
 
           <div className="mb-6">
@@ -235,7 +221,6 @@ export default function FounderDashboard() {
             </p>
           </div>
 
-          {/* Add Successor Form */}
           {showAddForm && (
             <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-6 mb-6">
               <h3 className="font-semibold text-slate-900 mb-4">Add New Successor</h3>
@@ -283,7 +268,6 @@ export default function FounderDashboard() {
             </div>
           )}
 
-          {/* Successor List - ALWAYS SHOW ALL SLOTS */}
           {successors.length === 0 ? (
             <div className="bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg p-8 text-center">
               <AlertCircle className="mx-auto mb-3 text-slate-400" size={48} />
