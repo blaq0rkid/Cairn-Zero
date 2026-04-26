@@ -4,7 +4,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { Shield, ArrowRight, AlertCircle } from 'lucide-react'
+import { Shield, ArrowRight, AlertCircle, Users } from 'lucide-react'
 
 export default function SuccessorClaimPage() {
   const router = useRouter()
@@ -27,17 +27,26 @@ export default function SuccessorClaimPage() {
     const normalizedCode = claimCode.trim().toUpperCase()
 
     try {
-      // CRITICAL: Store successor context flag BEFORE any navigation
+      // CRITICAL: Set successor context FIRST to prevent founder portal redirect
+      sessionStorage.clear() // Clear any existing context
       sessionStorage.setItem('portal_context', 'successor')
       sessionStorage.setItem('claim_code', normalizedCode)
       
       console.log('🔑 Claim code entered:', normalizedCode)
-      console.log('✅ Portal context set to: successor')
+      console.log('✅ Portal context locked to: SUCCESSOR')
 
-      // Lookup successor record (without authentication requirement)
+      // Check if user is currently authenticated
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (user) {
+        console.log('⚠️ User already authenticated:', user.email)
+        console.log('🔒 Maintaining SUCCESSOR context despite existing session')
+      }
+
+      // Lookup successor record
       const { data: successor, error: lookupError } = await supabase
         .from('successors')
-        .select('id, email, status, legal_accepted_at, invitation_token_used')
+        .select('id, email, status, legal_accepted_at, invitation_token_used, legal_version')
         .or(`invitation_token.eq.${normalizedCode},email.eq.test.successor@example.com`)
         .single()
 
@@ -50,17 +59,38 @@ export default function SuccessorClaimPage() {
 
       console.log('✅ Successor record found:', successor)
 
+      // STATE MISMATCH CHECK: Fix records with legal_accepted_at but status=pending
+      if (successor.legal_accepted_at && successor.status === 'pending') {
+        console.log('⚠️ State mismatch detected - fixing...')
+        
+        const { data: fixedRecord, error: fixError } = await supabase
+          .from('successors')
+          .update({
+            status: 'active',
+            legal_version: successor.legal_version || 'v1-2026-04-25',
+            invitation_token_used: true
+          })
+          .eq('id', successor.id)
+          .select()
+          .single()
+
+        if (!fixError && fixedRecord) {
+          console.log('✅ State mismatch fixed:', fixedRecord)
+          successor.status = fixedRecord.status
+          successor.legal_version = fixedRecord.legal_version
+          successor.invitation_token_used = fixedRecord.invitation_token_used
+        }
+      }
+
       // Check if already accepted and active
       if (successor.status === 'active' && successor.legal_accepted_at) {
-        console.log('✅ Already accepted - routing to successor dashboard')
+        console.log('✅ Already accepted - routing to successor thank you')
         sessionStorage.setItem('successor_verified', 'true')
-        
-        // EXPLICIT SUCCESSOR ROUTE - bypasses any founder dashboard logic
         router.push('/successor/thank-you?resumption=true')
         return
       }
 
-      // Check if invitation has been used but not completed
+      // Check if invitation already used but not completed
       if (successor.invitation_token_used && !successor.legal_accepted_at) {
         console.log('⚠️ Invitation used but not completed')
         setError('This invitation link has already been used. Please contact the founder.')
@@ -69,7 +99,7 @@ export default function SuccessorClaimPage() {
       }
 
       // Route to legal gateway for acceptance
-      console.log('🎯 Routing to legal gateway')
+      console.log('🎯 Routing to legal gateway with SUCCESSOR context locked')
       router.push('/successor/legal-gateway')
 
     } catch (err: any) {
@@ -93,6 +123,14 @@ export default function SuccessorClaimPage() {
             <p className="text-slate-600">
               Enter your claim code to access the successor portal
             </p>
+          </div>
+
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 flex items-start gap-3">
+            <Users className="text-blue-600 flex-shrink-0 mt-0.5" size={20} />
+            <div className="text-sm text-slate-700">
+              <p className="font-medium mb-1">Dual Role Users:</p>
+              <p>If you're both a Founder and Successor, entering a claim code here will take you to the Successor Portal for that specific designation.</p>
+            </div>
           </div>
 
           <form onSubmit={handleClaimSubmit} className="flex flex-col gap-6">
@@ -126,7 +164,7 @@ export default function SuccessorClaimPage() {
               disabled={loading || !claimCode.trim()}
               className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {loading ? 'Processing...' : 'Continue'}
+              {loading ? 'Processing...' : 'Continue to Successor Portal'}
               {!loading && <ArrowRight size={20} />}
             </button>
           </form>
