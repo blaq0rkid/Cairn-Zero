@@ -16,6 +16,7 @@ export async function middleware(request: NextRequest) {
     '/claim',
     '/successor/login',
     '/successor/legal-gateway',
+    '/successor/thank-you',  // CRITICAL: Allow thank you page access
     '/successor/accept',
     '/successor/declined',
     '/auth/callback',
@@ -36,11 +37,21 @@ export async function middleware(request: NextRequest) {
     path.startsWith('/successor/accept/')
   )
 
+  // Allow public paths unconditionally
   if (isPublicPath) {
     return res
   }
 
-  // Check authentication
+  // Check for simulation mode bypass
+  const isSimulation = request.nextUrl.searchParams.get('simulation') === 'true'
+  
+  // Allow successor dashboard access in simulation mode
+  if (path.startsWith('/successor') && isSimulation) {
+    console.log('✅ Simulation mode: Bypassing authentication gate')
+    return res
+  }
+
+  // Check authentication for protected routes
   const { data: { session } } = await supabase.auth.getSession()
 
   if (!session) {
@@ -65,10 +76,12 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL('/successor', request.url))
     }
 
-    // Enforce legal gating
-    if (path.startsWith('/successor') && !path.includes('/legal-gateway')) {
+    // Enforce legal gating (except for thank-you and legal-gateway)
+    if (path.startsWith('/successor') && 
+        !path.includes('/legal-gateway') && 
+        !path.includes('/thank-you')) {
       if (successor.status !== 'active' || !successor.legal_accepted_at) {
-        console.log('⚠️ Legal acceptance required')
+        console.log('⚠️ Legal acceptance required, redirecting to claim')
         return NextResponse.redirect(new URL('/claim', request.url))
       }
     }
