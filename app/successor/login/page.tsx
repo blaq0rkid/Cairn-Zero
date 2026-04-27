@@ -28,7 +28,7 @@ export default function SuccessorLogin() {
 
       if (authError) throw authError
 
-      console.log('✅ Authentication successful:', authData.user.email)
+//       console.log('✅ Authentication successful:', authData.user.email)
 
       // Verify they are a successor
       const { data: successor, error: successorError } = await supabase
@@ -43,7 +43,7 @@ export default function SuccessorLogin() {
         throw new Error('This login is for successors only. If you are a founder, please use the main login page.')
       }
 
-      console.log('✅ Successor verified, redirecting to dashboard')
+//       console.log('✅ Successor verified, redirecting to dashboard')
 
       // Redirect to successor dashboard
       router.push('/successor')

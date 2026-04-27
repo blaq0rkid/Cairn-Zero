@@ -23,7 +23,7 @@ export default function LegalGatewayPage() {
     const token = sessionStorage.getItem('successor_token')
     const email = sessionStorage.getItem('successor_email')
 
-    console.log('Legal Gateway: Checking session', { token, email })
+//     console.log('Legal Gateway: Checking session', { token, email })
 
     if (!token || !email) {
       router.push('/successor/access')
@@ -41,7 +41,7 @@ export default function LegalGatewayPage() {
       setSuccessorData(data)
       
       if (data.legal_accepted_at) {
-        console.log('Legal Gateway: Already accepted, redirecting to thank you')
+//         console.log('Legal Gateway: Already accepted, redirecting to thank you')
         router.push('/successor/thank-you')
       }
     } else {
@@ -56,7 +56,7 @@ export default function LegalGatewayPage() {
     setError('')
 
     try {
-      console.log('Step 1: Starting acceptance process')
+//       console.log('Step 1: Starting acceptance process')
 
       // Atomic update - all fields in one transaction
       const updatePayload = {
@@ -67,7 +67,7 @@ export default function LegalGatewayPage() {
         digital_attestation_signed_at: new Date().toISOString()
       }
 
-      console.log('Step 2: Update payload', updatePayload)
+//       console.log('Step 2: Update payload', updatePayload)
 
       const { data: updatedSuccessor, error: updateError } = await supabase
         .from('successors')
@@ -77,7 +77,7 @@ export default function LegalGatewayPage() {
         .select()
         .single()
 
-      console.log('Step 3: Update result', { updatedSuccessor, updateError })
+//       console.log('Step 3: Update result', { updatedSuccessor, updateError })
 
       if (updateError) {
         throw new Error(`Database update failed: ${updateError.message}`)
@@ -99,7 +99,7 @@ export default function LegalGatewayPage() {
         throw new Error(`Atomic update incomplete. Missing: ${missingFields.join(', ')}`)
       }
 
-      console.log('Step 5: All fields verified, routing to thank you')
+//       console.log('Step 5: All fields verified, routing to thank you')
 
       // Success - route to thank you page
       const isTestKey = successorData.invitation_token?.toLowerCase() === 'cz-2026'
@@ -107,7 +107,7 @@ export default function LegalGatewayPage() {
         ? '/successor/thank-you?simulation=true'
         : '/successor/thank-you'
 
-      console.log('Step 6: Navigating to', destination)
+//       console.log('Step 6: Navigating to', destination)
       router.push(destination)
 
     } catch (err) {

@@ -21,10 +21,10 @@ export default function SuccessorDashboard() {
     const token = sessionStorage.getItem('successor_token')
     const email = sessionStorage.getItem('successor_email')
 
-    console.log('Dashboard: Checking sessionStorage', { token, email })
+//     console.log('Dashboard: Checking sessionStorage', { token, email })
 
     if (!token || !email) {
-      console.log('Dashboard: No session data, redirecting to access')
+//       console.log('Dashboard: No session data, redirecting to access')
       router.push('/successor/access')
       return
     }
@@ -36,22 +36,22 @@ export default function SuccessorDashboard() {
       .eq('email', email)
       .single()
 
-    console.log('Dashboard: Query result', { successor, error })
+//     console.log('Dashboard: Query result', { successor, error })
 
     if (error || !successor) {
-      console.log('Dashboard: Invalid token/email, redirecting')
+//       console.log('Dashboard: Invalid token/email, redirecting')
       sessionStorage.clear()
       router.push('/successor/access')
       return
     }
 
     if (!successor.legal_accepted_at) {
-      console.log('Dashboard: Legal not accepted, redirecting to legal gateway')
+//       console.log('Dashboard: Legal not accepted, redirecting to legal gateway')
       router.push('/successor/legal-gateway')
       return
     }
 
-    console.log('Dashboard: Success, showing dashboard')
+//     console.log('Dashboard: Success, showing dashboard')
     setSuccessorData(successor)
     setLoading(false)
   }

@@ -63,10 +63,10 @@ export default function AddSuccessorModal({ userId, existingSuccessors, onClose,
 
       if (insertError) throw insertError
 
-      console.log('✅ Successor added to database')
+//       console.log('✅ Successor added to database')
 
       // Send invitation email
-      console.log('📧 Sending invitation email...')
+//       console.log('📧 Sending invitation email...')
       const inviteResponse = await fetch('/api/successors/invite', {
         method: 'POST',
         headers: {
@@ -86,7 +86,7 @@ export default function AddSuccessorModal({ userId, existingSuccessors, onClose,
         throw new Error(inviteResult.error || 'Failed to send invitation email')
       }
 
-      console.log('✅ Invitation sent successfully:', inviteResult)
+//       console.log('✅ Invitation sent successfully:', inviteResult)
       onSuccess()
     } catch (err: any) {
       console.error('Error adding successor:', err)

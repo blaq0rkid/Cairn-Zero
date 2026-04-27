@@ -30,11 +30,11 @@ export async function determinePortalRoute(
   // Check for explicit session context flag
   const sessionContext = sessionStorage.getItem('portal_context')
   
-  console.log('🔍 Portal Route Decision:')
-  console.log('  User ID:', userId)
-  console.log('  Email:', email)
-  console.log('  Current Path:', currentPath)
-  console.log('  Session Context:', sessionContext)
+//   console.log('🔍 Portal Route Decision:')
+//   console.log('  User ID:', userId)
+//   console.log('  Email:', email)
+//   console.log('  Current Path:', currentPath)
+//   console.log('  Session Context:', sessionContext)
 
   // Check for founder record
   const { data: founderProfile } = await supabase
@@ -53,13 +53,13 @@ export async function determinePortalRoute(
   const hasFounderRecord = !!founderProfile
   const hasSuccessorRecord = !!successorRecord
   
-  console.log('  Has Founder Record:', hasFounderRecord)
-  console.log('  Has Successor Record:', hasSuccessorRecord)
-  console.log('  Successor Status:', successorRecord?.status)
+//   console.log('  Has Founder Record:', hasFounderRecord)
+//   console.log('  Has Successor Record:', hasSuccessorRecord)
+//   console.log('  Successor Status:', successorRecord?.status)
 
   // RULE 1: Explicit session context always wins
   if (sessionContext === 'successor' && hasSuccessorRecord) {
-    console.log('✅ Session context: SUCCESSOR (explicit)')
+//     console.log('✅ Session context: SUCCESSOR (explicit)')
     return {
       context: 'successor',
       shouldRouteToSuccessor: true,
@@ -75,7 +75,7 @@ export async function determinePortalRoute(
   }
 
   if (sessionContext === 'founder' && hasFounderRecord) {
-    console.log('✅ Session context: FOUNDER (explicit)')
+//     console.log('✅ Session context: FOUNDER (explicit)')
     return {
       context: 'founder',
       shouldRouteToSuccessor: false,
@@ -92,7 +92,7 @@ export async function determinePortalRoute(
 
   // RULE 2: Current path context (respect where they are)
   if (currentPath.startsWith('/successor') && hasSuccessorRecord) {
-    console.log('✅ Respecting successor path context')
+//     console.log('✅ Respecting successor path context')
     sessionStorage.setItem('portal_context', 'successor')
     return {
       context: 'successor',
@@ -109,7 +109,7 @@ export async function determinePortalRoute(
   }
 
   if (currentPath.startsWith('/dashboard') && hasFounderRecord) {
-    console.log('✅ Respecting founder path context')
+//     console.log('✅ Respecting founder path context')
     sessionStorage.setItem('portal_context', 'founder')
     return {
       context: 'founder',
@@ -127,7 +127,7 @@ export async function determinePortalRoute(
 
   // RULE 3: Both roles exist - default to founder, set dual context
   if (hasFounderRecord && hasSuccessorRecord) {
-    console.log('⚠️ Dual role detected - defaulting to founder')
+//     console.log('⚠️ Dual role detected - defaulting to founder')
     sessionStorage.setItem('portal_context', 'founder')
     return {
       context: 'dual',
@@ -145,7 +145,7 @@ export async function determinePortalRoute(
 
   // RULE 4: Only successor record
   if (hasSuccessorRecord && !hasFounderRecord) {
-    console.log('✅ Successor only')
+//     console.log('✅ Successor only')
     sessionStorage.setItem('portal_context', 'successor')
     return {
       context: 'successor',
@@ -163,7 +163,7 @@ export async function determinePortalRoute(
 
   // RULE 5: Only founder record
   if (hasFounderRecord && !hasSuccessorRecord) {
-    console.log('✅ Founder only')
+//     console.log('✅ Founder only')
     sessionStorage.setItem('portal_context', 'founder')
     return {
       context: 'founder',
@@ -180,7 +180,7 @@ export async function determinePortalRoute(
   }
 
   // RULE 6: No records found
-  console.log('❌ No portal records found')
+//   console.log('❌ No portal records found')
   return {
     context: 'unknown',
     shouldRouteToSuccessor: false,

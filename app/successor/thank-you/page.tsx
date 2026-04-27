@@ -23,10 +23,10 @@ export default function SuccessorThankYouPage() {
     const token = sessionStorage.getItem('successor_token')
     const email = sessionStorage.getItem('successor_email')
 
-    console.log('Thank You: Checking sessionStorage', { token, email, isSimulation })
+//     console.log('Thank You: Checking sessionStorage', { token, email, isSimulation })
 
     if (!token || !email) {
-      console.log('Thank You: No session data, redirecting')
+//       console.log('Thank You: No session data, redirecting')
       router.push('/successor/access')
       return
     }
@@ -38,10 +38,10 @@ export default function SuccessorThankYouPage() {
       .eq('email', email)
       .single()
 
-    console.log('Thank You: Query result', { successor, error })
+//     console.log('Thank You: Query result', { successor, error })
 
     if (error || !successor) {
-      console.log('Thank You: Invalid data')
+//       console.log('Thank You: Invalid data')
       sessionStorage.clear()
       router.push('/successor/access')
       return

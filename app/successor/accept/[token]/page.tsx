@@ -105,7 +105,7 @@ export default function SuccessorInvitation({ params }: { params: { token: strin
 
       if (updateError) throw updateError
 
-      console.log('✅ Successor accepted, redirecting to login')
+//       console.log('✅ Successor accepted, redirecting to login')
       router.push('/successor/login?welcome=true')
     } catch (err: any) {
       console.error('❌ Accept error:', err)
@@ -144,7 +144,7 @@ export default function SuccessorInvitation({ params }: { params: { token: strin
         })
       })
 
-      console.log('✅ Successor declined, redirecting to thank you page')
+//       console.log('✅ Successor declined, redirecting to thank you page')
       router.push('/successor/declined')
     } catch (err: any) {
       console.error('❌ Decline error:', err)

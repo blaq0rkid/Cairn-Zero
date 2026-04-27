@@ -44,7 +44,7 @@ export async function POST(request: Request) {
     }
 
     if (TESTING_MODE && !hardwareSignature) {
-      console.log('⚠️ TESTING MODE: Bypassing hardware signature requirement')
+//       console.log('⚠️ TESTING MODE: Bypassing hardware signature requirement')
     }
 
   } catch (error) {
@@ -72,7 +72,7 @@ export async function POST(request: Request) {
       }, { status: 404 })
     }
 
-    console.log(`🔍 Found successor: ${existingSuccessor.email} (Slot ${existingSuccessor.sequence_order})`)
+//     console.log(`🔍 Found successor: ${existingSuccessor.email} (Slot ${existingSuccessor.sequence_order})`)
 
     // Delete the successor record completely
     const { error: deleteError } = await supabase
@@ -91,10 +91,10 @@ export async function POST(request: Request) {
       }, { status: 500 })
     }
 
-    console.log(`✅ Successfully deleted successor: ${existingSuccessor.email} from Slot ${existingSuccessor.sequence_order}`)
+//     console.log(`✅ Successfully deleted successor: ${existingSuccessor.email} from Slot ${existingSuccessor.sequence_order}`)
     
     if (TESTING_MODE) {
-      console.log('⚠️ TESTING MODE: Deletion completed without hardware verification')
+//       console.log('⚠️ TESTING MODE: Deletion completed without hardware verification')
     }
     
     return NextResponse.json({ 

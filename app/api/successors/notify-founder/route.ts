@@ -71,7 +71,7 @@ export async function POST(request: Request) {
       html: emailHtml
     })
 
-    console.log(`✅ Founder notified of ${action}:`, founder.email)
+//     console.log(`✅ Founder notified of ${action}:`, founder.email)
 
     return NextResponse.json({ success: true })
   } catch (error: any) {

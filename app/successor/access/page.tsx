@@ -26,7 +26,7 @@ export default function SuccessorAccessPage() {
 
     try {
       const cleanCode = keyCode.trim().toUpperCase()
-      console.log('Step 1: Looking up code:', cleanCode)
+//       console.log('Step 1: Looking up code:', cleanCode)
 
       const { data, error: lookupError } = await supabase
         .from('successors')
@@ -35,7 +35,7 @@ export default function SuccessorAccessPage() {
 
       clearTimeout(timeoutId)
 
-      console.log('Step 2: Query complete', { data, lookupError })
+//       console.log('Step 2: Query complete', { data, lookupError })
 
       if (lookupError) {
         console.error('Step 3: Database error:', lookupError)
@@ -45,25 +45,25 @@ export default function SuccessorAccessPage() {
       }
 
       if (!data || data.length === 0) {
-        console.log('Step 4: No match found')
+//         console.log('Step 4: No match found')
         setError('Invalid key code. Please check and try again.')
         setLoading(false)
         return
       }
 
       const successor = data[0]
-      console.log('Step 5: Found successor:', successor.email)
+//       console.log('Step 5: Found successor:', successor.email)
 
       sessionStorage.setItem('successor_token', successor.invitation_token)
       sessionStorage.setItem('successor_email', successor.email)
       
-      console.log('Step 6: Routing to next page')
+//       console.log('Step 6: Routing to next page')
       
       if (successor.legal_accepted_at) {
-        console.log('Step 7: Going to /successor')
+//         console.log('Step 7: Going to /successor')
         router.push('/successor')
       } else {
-        console.log('Step 7: Going to /successor/legal-gateway')
+//         console.log('Step 7: Going to /successor/legal-gateway')
         router.push('/successor/legal-gateway')
       }
     } catch (err) {

@@ -27,8 +27,8 @@ export async function linkSuccessorToAuth(email: string): Promise<SuccessorLinkR
       }
     }
 
-    console.log('🔗 Attempting to link successor record for:', email)
-    console.log('🔑 Auth UID:', user.id)
+//     console.log('🔗 Attempting to link successor record for:', email)
+//     console.log('🔑 Auth UID:', user.id)
 
     // Find successor record by email
     const { data: successor, error: lookupError } = await supabase
@@ -48,7 +48,7 @@ export async function linkSuccessorToAuth(email: string): Promise<SuccessorLinkR
 
     // Check if already linked
     if (successor.successor_id === user.id) {
-      console.log('✅ Successor already linked to auth user')
+//       console.log('✅ Successor already linked to auth user')
       return { 
         success: true, 
         successorId: successor.id,
@@ -57,7 +57,7 @@ export async function linkSuccessorToAuth(email: string): Promise<SuccessorLinkR
     }
 
     // Link the successor_id to the authenticated user
-    console.log('🔄 Linking successor_id to auth.uid()...')
+//     console.log('🔄 Linking successor_id to auth.uid()...')
     const { data: updated, error: updateError } = await supabase
       .from('successors')
       .update({ successor_id: user.id })
@@ -73,7 +73,7 @@ export async function linkSuccessorToAuth(email: string): Promise<SuccessorLinkR
       }
     }
 
-    console.log('✅ Successfully linked successor to auth user:', updated)
+//     console.log('✅ Successfully linked successor to auth user:', updated)
     return { 
       success: true, 
       successorId: successor.id,
@@ -105,12 +105,12 @@ export async function verifySuccessorAccess(userId: string) {
       .single()
 
     if (error || !successor) {
-      console.log('⚠️ No successor record found for user:', userId)
+//       console.log('⚠️ No successor record found for user:', userId)
       return null
     }
 
     if (successor.status !== 'active' || !successor.legal_accepted_at) {
-      console.log('⚠️ Successor not active or not accepted')
+//       console.log('⚠️ Successor not active or not accepted')
       return null
     }
 

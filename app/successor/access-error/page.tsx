@@ -50,7 +50,7 @@ export default function SuccessorAccessError() {
 
       // Check if successor_id needs linking
       if (!successor.successor_id || successor.successor_id !== user.id) {
-        console.log('⚠️ Successor record exists but not linked to auth user')
+//         console.log('⚠️ Successor record exists but not linked to auth user')
         setErrorType('not_linked')
         setLoading(false)
         return
@@ -58,14 +58,14 @@ export default function SuccessorAccessError() {
 
       // Check if not active
       if (successor.status !== 'active' || !successor.legal_accepted_at) {
-        console.log('⚠️ Successor exists and linked but not active')
+//         console.log('⚠️ Successor exists and linked but not active')
         setErrorType('not_active')
         setLoading(false)
         return
       }
 
       // If we get here, access should work - redirect to dashboard
-      console.log('✅ Access should be valid, redirecting...')
+//       console.log('✅ Access should be valid, redirecting...')
       router.push('/successor')
 
     } catch (err) {
@@ -83,7 +83,7 @@ export default function SuccessorAccessError() {
     const result = await linkSuccessorToAuth(userEmail)
 
     if (result.success) {
-      console.log('✅ Linking successful, redirecting to dashboard')
+//       console.log('✅ Linking successful, redirecting to dashboard')
       router.push('/successor')
     } else {
       console.error('❌ Linking failed:', result.error)

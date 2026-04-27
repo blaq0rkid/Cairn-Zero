@@ -31,10 +31,10 @@ export async function POST(request: Request) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL
   const apiKey = process.env.RESEND_API_KEY
 
-  console.log('🔍 Environment Check:')
-  console.log('- API Key exists:', !!apiKey)
-  console.log('- From Email:', fromEmail || '❌ MISSING')
-  console.log('- App URL:', appUrl || '❌ MISSING')
+  //console.log('🔍 Environment Check:')
+  //console.log('- API Key exists:', !!apiKey)
+  //console.log('- From Email:', fromEmail || '❌ MISSING')
+  //console.log('- App URL:', appUrl || '❌ MISSING')
 
   if (!fromEmail || fromEmail !== 'noreply@mycairnzero.com') {
     console.error('❌ Invalid RESEND_FROM_EMAIL:', fromEmail)
@@ -70,7 +70,7 @@ export async function POST(request: Request) {
   const invitationToken = crypto.randomUUID()
   const acceptUrl = `${appUrl}/successor/accept/${invitationToken}`
   
-  console.log('🔗 Accept URL:', acceptUrl)
+  //console.log('🔗 Accept URL:', acceptUrl)
 
   // Update database
   const { error: updateError } = await supabase
@@ -90,13 +90,13 @@ export async function POST(request: Request) {
     }, { status: 500 })
   }
 
-  console.log('✅ Database updated')
+  //console.log('✅ Database updated')
 
   // Send email
   try {
-    console.log('📧 Sending email...')
-    console.log('- From:', `Cairn Zero <${fromEmail}>`)
-    console.log('- To:', successorEmail)
+    //console.log('📧 Sending email...')
+//     console.log('- From:', `Cairn Zero <${fromEmail}>`)
+//     console.log('- To:', successorEmail)
 
     const { data, error } = await resend.emails.send({
       from: `Cairn Zero <${fromEmail}>`,
@@ -164,8 +164,8 @@ export async function POST(request: Request) {
       }, { status: 500 })
     }
 
-    console.log('✅ Email sent successfully')
-    console.log('- Email ID:', data?.id)
+//     console.log('✅ Email sent successfully')
+//     console.log('- Email ID:', data?.id)
     
     return NextResponse.json({ 
       success: true, 
