@@ -20,6 +20,8 @@ export default function SignupPage() {
 
   const handleSignup = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    setError('')
+    
     const formData = new FormData(e.currentTarget)
     const email = formData.get('email') as string
     const password = formData.get('password') as string
@@ -49,43 +51,43 @@ export default function SignupPage() {
     setLoading(true)
     setError('')
 
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: pendingCredentials.email,
-      password: pendingCredentials.password,
-      options: {
-        data: {
-          full_name: pendingCredentials.fullName
+    try {
+      // Create auth user
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: pendingCredentials.email,
+        password: pendingCredentials.password,
+        options: {
+          data: {
+            full_name: pendingCredentials.fullName
+          }
         }
-      }
-    })
+      })
 
-    if (authError) {
-      setError(authError.message)
+      if (authError) throw authError
+
+      if (authData.user) {
+        // Create profile with sovereignty acceptance
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: authData.user.id,
+            email: pendingCredentials.email,
+            full_name: pendingCredentials.fullName,
+            sovereignty_warning_accepted: true,
+            sovereignty_warning_accepted_at: new Date().toISOString()
+          })
+
+        if (profileError) throw profileError
+
+        // Close modal and redirect
+        setShowWarning(false)
+        setLoading(false)
+        router.push('/dashboard')
+      }
+    } catch (err: any) {
+      setError(err.message || 'An error occurred during signup')
       setLoading(false)
       setShowWarning(false)
-      return
-    }
-
-    if (authData.user) {
-      // Create profile with sovereignty acceptance
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: authData.user.id,
-          email: pendingCredentials.email,
-          full_name: pendingCredentials.fullName,
-          sovereignty_warning_accepted: true,
-          sovereignty_warning_accepted_at: new Date().toISOString()
-        })
-
-      if (profileError) {
-        setError('Account created but profile setup failed. Please contact support.')
-        setLoading(false)
-        return
-      }
-
-      // Redirect to dashboard
-      router.push('/dashboard')
     }
   }
 
@@ -93,6 +95,7 @@ export default function SignupPage() {
     setShowWarning(false)
     setPendingCredentials(null)
     setError('You must accept the Zero-Knowledge Sovereignty terms to create an account.')
+    setLoading(false)
   }
 
   return (
