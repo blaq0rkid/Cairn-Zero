@@ -28,19 +28,16 @@ export default function SignupPage() {
     const confirmPassword = formData.get('confirmPassword') as string
     const fullName = formData.get('fullName') as string
 
-    // Validate passwords match
     if (password !== confirmPassword) {
       setError('Passwords do not match')
       return
     }
 
-    // Validate password strength
     if (password.length < 8) {
       setError('Password must be at least 8 characters long')
       return
     }
 
-    // Store credentials and show sovereignty warning
     setPendingCredentials({ email, password, fullName })
     setShowWarning(true)
   }
@@ -52,7 +49,7 @@ export default function SignupPage() {
     setError('')
 
     try {
-      // Create auth user
+      // Create auth user (trigger will auto-create profile)
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: pendingCredentials.email,
         password: pendingCredentials.password,
@@ -66,25 +63,28 @@ export default function SignupPage() {
       if (authError) throw authError
 
       if (authData.user) {
-        // Create profile with sovereignty acceptance
-        const { error: profileError } = await supabase
+        // Wait a moment for trigger to complete
+        await new Promise(resolve => setTimeout(resolve, 1000))
+
+        // Update profile to mark sovereignty warning as accepted
+        const { error: updateError } = await supabase
           .from('profiles')
-          .insert({
-            id: authData.user.id,
-            email: pendingCredentials.email,
-            full_name: pendingCredentials.fullName,
+          .update({
             sovereignty_warning_accepted: true,
             sovereignty_warning_accepted_at: new Date().toISOString()
           })
+          .eq('id', authData.user.id)
 
-        if (profileError) throw profileError
+        if (updateError) {
+          console.error('Profile update error:', updateError)
+        }
 
-        // Close modal and redirect
         setShowWarning(false)
         setLoading(false)
         router.push('/dashboard')
       }
     } catch (err: any) {
+      console.error('Signup error:', err)
       setError(err.message || 'An error occurred during signup')
       setLoading(false)
       setShowWarning(false)
