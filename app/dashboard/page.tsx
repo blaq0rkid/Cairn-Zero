@@ -3,84 +3,74 @@
 
 import { useState, useEffect } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { Shield, Users, Clock, CheckCircle, XCircle, AlertCircle, LogOut, Plus, Trash2, Edit, FileText } from 'lucide-react'
-import Image from 'next/image'
+import { useRouter } from 'next/navigation'
+import { Plus, Trash2, Edit } from 'lucide-react'
+import FounderCheckIn from '@/components/FounderCheckIn'
+import SystemHealthIndicator from '@/components/SystemHealthIndicator'
+
+interface Successor {
+  id: string
+  email: string
+  full_name: string
+  invitation_token: string
+  status: string
+  slot_number: number
+  guidepost_instructions: string | null
+  legal_accepted_at: string | null
+  created_at: string
+}
 
 export default function FounderDashboard() {
+  const router = useRouter()
   const supabase = createClientComponentClient()
-  const [successors, setSuccessors] = useState<any[]>([])
+  const [successors, setSuccessors] = useState<Successor[]>([])
   const [loading, setLoading] = useState(true)
-  const [founderId, setFounderId] = useState<string | null>(null)
-  const [showAddForm, setShowAddForm] = useState(false)
-  const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [editingGuidepost, setEditingGuidepost] = useState<any>(null)
-  const [newSuccessor, setNewSuccessor] = useState({
-    email: '',
-    full_name: '',
-  })
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [editingGuidepost, setEditingGuidepost] = useState<string | null>(null)
 
   useEffect(() => {
-    initializeDashboard()
+    checkAuth()
+    loadSuccessors()
+    setupRealtimeSubscription()
   }, [])
 
-  const initializeDashboard = async () => {
+  const checkAuth = async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
-      window.location.href = '/login'
-      return
-    }
-
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('email', user.email)
-      .single()
-
-    if (profile) {
-      setFounderId(profile.id)
-      await loadSuccessors(profile.id)
-      subscribeToRealtimeUpdates(profile.id)
+      router.push('/login')
     }
   }
 
-  const loadSuccessors = async (founderId: string) => {
+  const loadSuccessors = async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
     const { data, error } = await supabase
       .from('successors')
       .select('*')
-      .eq('founder_id', founderId)
-      .order('sequence_order', { ascending: true })
+      .eq('founder_id', user.id)
+      .order('slot_number', { ascending: true })
 
-    if (!error && data) {
-      setSuccessors(data)
+    if (error) {
+      return
     }
+
+    setSuccessors(data || [])
     setLoading(false)
   }
 
-  const subscribeToRealtimeUpdates = (founderId: string) => {
+  const setupRealtimeSubscription = () => {
     const channel = supabase
-      .channel('successor-changes')
+      .channel('successors-changes')
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
-          table: 'successors',
-          filter: `founder_id=eq.${founderId}`
+          table: 'successors'
         },
-        (payload) => {
-          console.log('🔔 Real-time update:', payload)
-          
-          if (payload.eventType === 'INSERT') {
-            setSuccessors(prev => [...prev, payload.new].sort((a, b) => (a.sequence_order || 0) - (b.sequence_order || 0)))
-          } else if (payload.eventType === 'UPDATE') {
-            setSuccessors(prev => 
-              prev.map(s => s.id === payload.new.id ? payload.new : s)
-            )
-          } else if (payload.eventType === 'DELETE') {
-            setSuccessors(prev => 
-              prev.filter(s => s.id !== payload.old.id)
-            )
-          }
+        () => {
+          loadSuccessors()
         }
       )
       .subscribe()
@@ -90,386 +80,316 @@ export default function FounderDashboard() {
     }
   }
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-    window.location.href = '/login'
-  }
+  const handleAddSuccessor = async (email: string, fullName: string) => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
 
-  const getNextSequenceOrder = () => {
-    if (successors.length === 0) return 1
-    const maxSeq = Math.max(...successors.map(s => s.sequence_order || s.slot_number || 0))
-    return maxSeq + 1
-  }
+    const nextSlot = successors.length > 0 
+      ? Math.max(...successors.map(s => s.slot_number)) + 1 
+      : 1
 
-  const handleAddSuccessor = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!founderId) return
-
-    const nextSequence = getNextSequenceOrder()
     const invitationToken = `CZ-${Date.now().toString().slice(-4)}`
-    
+
     const { error } = await supabase
       .from('successors')
       .insert({
-        founder_id: founderId,
-        email: newSuccessor.email,
-        full_name: newSuccessor.full_name,
-        sequence_order: nextSequence,
-        slot_number: nextSequence,
+        founder_id: user.id,
+        email,
+        full_name: fullName,
         invitation_token: invitationToken,
+        slot_number: nextSlot,
+        sequence_order: nextSlot,
         status: 'pending'
       })
 
-    if (error) {
-      alert('Failed to add successor: ' + error.message)
-      console.error(error)
-    } else {
-      setShowAddForm(false)
-      setNewSuccessor({ email: '', full_name: '' })
+    if (!error) {
+      setShowAddModal(false)
+      loadSuccessors()
     }
   }
 
-  const deleteSuccessorSlot = async (successorId: string) => {
-    setDeletingId(successorId)
-  }
-
-  const confirmDelete = async () => {
-    if (!deletingId || !founderId) return
+  const handleDeleteSuccessor = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this successor? This action cannot be undone.')) {
+      return
+    }
 
     const { error } = await supabase
       .from('successors')
       .delete()
-      .eq('id', deletingId)
+      .eq('id', id)
 
-    if (error) {
-      alert('Failed to delete successor slot: ' + error.message)
-      console.error(error)
-      setDeletingId(null)
-    } else {
-      setSuccessors(prev => prev.filter(s => s.id !== deletingId))
-      setDeletingId(null)
+    if (!error) {
+      loadSuccessors()
     }
   }
 
-  const cancelDelete = () => {
-    setDeletingId(null)
-  }
-
-  const handleSaveGuidepost = async () => {
-    if (!editingGuidepost || !founderId) return
-
+  const handleUpdateGuidepost = async (successorId: string, instructions: string) => {
     const { error } = await supabase
       .from('successors')
-      .update({ guidepost_instructions: editingGuidepost.content })
-      .eq('id', editingGuidepost.id)
+      .update({ guidepost_instructions: instructions })
+      .eq('id', successorId)
 
-    if (error) {
-      alert('Failed to save guidepost: ' + error.message)
-    } else {
-      setSuccessors(prev =>
-        prev.map(s => s.id === editingGuidepost.id 
-          ? { ...s, guidepost_instructions: editingGuidepost.content }
-          : s
-        )
-      )
+    if (!error) {
       setEditingGuidepost(null)
+      loadSuccessors()
     }
   }
 
-  const getStatusBadge = (successor: any) => {
-    const statusConfig: Record<string, { icon: any; color: string; label: string }> = {
-      active: { icon: CheckCircle, color: 'bg-green-100 text-green-800 border-green-300', label: 'Active' },
-      accepted: { icon: CheckCircle, color: 'bg-blue-100 text-blue-800 border-blue-300', label: 'Accepted' },
-      pending: { icon: Clock, color: 'bg-yellow-100 text-yellow-800 border-yellow-300', label: 'Pending' },
-      invited: { icon: Clock, color: 'bg-purple-100 text-purple-800 border-purple-300', label: 'Invited' },
-      revoked: { icon: XCircle, color: 'bg-red-100 text-red-800 border-red-300', label: 'Revoked' },
-      declined: { icon: XCircle, color: 'bg-gray-100 text-gray-800 border-gray-300', label: 'Declined' }
+  const getStatusBadge = (status: string, legalAccepted: string | null) => {
+    if (legalAccepted) {
+      return (
+        <span className="px-3 py-1 bg-green-100 text-green-800 text-sm font-semibold rounded-full">
+          Active
+        </span>
+      )
     }
 
-    const config = statusConfig[successor.status] || statusConfig.pending
-    const Icon = config.icon
-
-    return (
-      <div className={`flex items-center gap-2 px-3 py-1 rounded-full border-2 ${config.color}`}>
-        <Icon size={16} />
-        <span className="text-sm font-semibold">{config.label}</span>
-      </div>
-    )
+    switch (status) {
+      case 'pending':
+        return (
+          <span className="px-3 py-1 bg-yellow-100 text-yellow-800 text-sm font-semibold rounded-full">
+            Pending
+          </span>
+        )
+      case 'declined':
+        return (
+          <span className="px-3 py-1 bg-red-100 text-red-800 text-sm font-semibold rounded-full">
+            Declined
+          </span>
+        )
+      case 'revoked':
+        return (
+          <span className="px-3 py-1 bg-gray-100 text-gray-800 text-sm font-semibold rounded-full">
+            Revoked
+          </span>
+        )
+      default:
+        return (
+          <span className="px-3 py-1 bg-blue-100 text-blue-800 text-sm font-semibold rounded-full">
+            {status}
+          </span>
+        )
+    }
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="text-center">
-          <Shield className="mx-auto mb-4 text-blue-600 animate-pulse" size={48} />
-          <p className="text-slate-600">Loading dashboard...</p>
-        </div>
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="text-slate-600">Loading dashboard...</div>
       </div>
     )
   }
 
   return (
     <div className="min-h-screen bg-slate-50">
+      {/* Header */}
       <header className="bg-white border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-3">
-              <Image 
+              <img 
                 src="https://cdn.marblism.com/JsSjox_nhRL.webp" 
                 alt="Cairn Zero" 
-                width={40} 
-                height={40}
-                className="object-contain"
+                className="h-10 w-10 object-contain" 
               />
               <span className="text-xl font-bold text-slate-900">Cairn Zero</span>
+            </div>
+            <div className="flex items-center gap-4">
+              <SystemHealthIndicator />
+              <button
+                onClick={() => supabase.auth.signOut()}
+                className="text-slate-600 hover:text-slate-900 transition-colors"
+              >
+                Logout
+              </button>
             </div>
           </div>
         </div>
       </header>
 
-      <div className="max-w-6xl mx-auto p-4 py-8">
-        <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-8">
-          <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-200">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full">
-                <Shield className="text-blue-600" size={32} />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold text-slate-900">Founder Dashboard</h1>
-                <p className="text-slate-600 mt-1">Manage your succession plan</p>
-              </div>
-            </div>
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-slate-900 mb-2">Founder Dashboard</h1>
+          <p className="text-slate-600">Manage your digital succession plan</p>
+        </div>
+
+        {/* Check-In Widget */}
+        <div className="mb-8">
+          <FounderCheckIn />
+        </div>
+
+        {/* Successors Section */}
+        <div className="bg-white rounded-lg border-2 border-slate-200 p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold text-slate-900">Your Successors</h2>
             <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors"
+              onClick={() => setShowAddModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
-              <LogOut size={20} />
-              Log Out
+              <Plus size={20} />
+              Add Successor
             </button>
           </div>
 
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Users className="text-slate-700" size={24} />
-                <h2 className="text-xl font-semibold text-slate-900">Successor Slots</h2>
-                <div className="ml-2 px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-semibold">
-                  LIVE
-                </div>
-              </div>
-              <button
-                onClick={() => setShowAddForm(!showAddForm)}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                <Plus size={20} />
-                Add Successor
-              </button>
-            </div>
-            <p className="text-sm text-slate-600">
-              Status updates appear in real-time as successors accept or decline invitations
-            </p>
-          </div>
-
-          {showAddForm && (
-            <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-6 mb-6">
-              <h3 className="font-semibold text-slate-900 mb-4">Add New Successor</h3>
-              <form onSubmit={handleAddSuccessor} className="flex flex-col gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Full Name
-                  </label>
-                  <input
-                    type="text"
-                    value={newSuccessor.full_name}
-                    onChange={(e) => setNewSuccessor({ ...newSuccessor, full_name: e.target.value })}
-                    className="w-full px-4 py-2 border-2 border-slate-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Email Address
-                  </label>
-                  <input
-                    type="email"
-                    value={newSuccessor.email}
-                    onChange={(e) => setNewSuccessor({ ...newSuccessor, email: e.target.value })}
-                    className="w-full px-4 py-2 border-2 border-slate-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none"
-                    required
-                  />
-                </div>
-                <div className="flex gap-3">
-                  <button
-                    type="submit"
-                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    Create Successor
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowAddForm(false)}
-                    className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            </div>
-          )}
-
-          {editingGuidepost && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-              <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-xl font-semibold text-slate-900">
-                    Edit Guidepost for Slot {editingGuidepost.slot}
-                  </h3>
-                  <button
-                    onClick={() => setEditingGuidepost(null)}
-                    className="text-slate-400 hover:text-slate-600"
-                  >
-                    ✕
-                  </button>
-                </div>
-                <p className="text-sm text-slate-600 mb-4">
-                  This information will be shown to your successor after they accept the legal agreement.
-                </p>
-                <textarea
-                  value={editingGuidepost.content}
-                  onChange={(e) => setEditingGuidepost({ ...editingGuidepost, content: e.target.value })}
-                  className="w-full h-64 px-4 py-3 border-2 border-slate-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none"
-                  placeholder="Enter instructions, passwords, important information, or guidance for your successor..."
-                />
-                <div className="flex gap-3 mt-4">
-                  <button
-                    onClick={handleSaveGuidepost}
-                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    Save Guidepost
-                  </button>
-                  <button
-                    onClick={() => setEditingGuidepost(null)}
-                    className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
           {successors.length === 0 ? (
-            <div className="bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg p-8 text-center">
-              <AlertCircle className="mx-auto mb-3 text-slate-400" size={48} />
-              <p className="text-slate-600">No successors designated yet</p>
-              <p className="text-sm text-slate-500 mt-2">Click "Add Successor" to get started</p>
+            <div className="text-center py-12">
+              <p className="text-slate-600 mb-4">No successors added yet</p>
+              <p className="text-sm text-slate-500">
+                Add your first successor to begin your succession plan
+              </p>
             </div>
           ) : (
             <div className="flex flex-col gap-4">
               {successors.map((successor) => (
                 <div
                   key={successor.id}
-                  className="bg-slate-50 border-2 border-slate-200 rounded-lg p-6 hover:border-blue-300 transition-colors"
+                  className="border-2 border-slate-200 rounded-lg p-4 hover:border-blue-300 transition-colors"
                 >
-                  <div className="flex items-start justify-between mb-4">
+                  <div className="flex justify-between items-start mb-3">
                     <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="px-2 py-1 bg-slate-200 text-slate-700 text-xs font-semibold rounded">
-                          Slot {successor.sequence_order || successor.slot_number}
-                        </span>
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="text-lg font-semibold text-slate-900">
+                          Slot {successor.slot_number}: {successor.full_name || 'Unnamed'}
+                        </h3>
+                        {getStatusBadge(successor.status, successor.legal_accepted_at)}
                       </div>
-                      <h3 className="font-semibold text-slate-900 mb-1">
-                        {successor.full_name || 'Unnamed Successor'}
-                      </h3>
                       <p className="text-sm text-slate-600">{successor.email}</p>
-                      {successor.invitation_token && (
-                        <p className="text-xs text-blue-600 font-mono mt-2">
-                          Code: {successor.invitation_token}
+                      <p className="text-xs text-slate-500 mt-1">
+                        Code: <span className="font-mono font-semibold">{successor.invitation_token}</span>
+                      </p>
+                      {successor.legal_accepted_at && (
+                        <p className="text-xs text-green-600 mt-1">
+                          Accepted: {new Date(successor.legal_accepted_at).toLocaleDateString()}
                         </p>
                       )}
                     </div>
-                    {getStatusBadge(successor)}
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4 text-sm mb-4">
-                    {successor.legal_accepted_at && (
-                      <div>
-                        <span className="text-slate-500">Accepted:</span>
-                        <span className="ml-2 text-slate-900 font-medium">
-                          {new Date(successor.legal_accepted_at).toLocaleDateString()}
-                        </span>
-                      </div>
-                    )}
-                    {successor.legal_version && (
-                      <div>
-                        <span className="text-slate-500">Legal Version:</span>
-                        <span className="ml-2 text-slate-900 font-medium">
-                          {successor.legal_version}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="bg-white border border-slate-200 rounded-lg p-4 mb-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <FileText className="text-slate-600" size={16} />
-                        <span className="text-sm font-medium text-slate-700">Guidepost Instructions</span>
-                      </div>
-                      <button
-                        onClick={() => setEditingGuidepost({
-                          id: successor.id,
-                          slot: successor.sequence_order || successor.slot_number,
-                          content: successor.guidepost_instructions || ''
-                        })}
-                        className="flex items-center gap-1 px-3 py-1 text-sm text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                      >
-                        <Edit size={14} />
-                        Edit
-                      </button>
-                    </div>
-                    <p className="text-sm text-slate-600">
-                      {successor.guidepost_instructions 
-                        ? successor.guidepost_instructions.substring(0, 100) + (successor.guidepost_instructions.length > 100 ? '...' : '')
-                        : 'No instructions set yet'}
-                    </p>
-                  </div>
-
-                  {deletingId === successor.id ? (
-                    <div className="bg-red-50 border-2 border-red-300 rounded-lg p-4">
-                      <p className="text-sm text-red-900 font-semibold mb-3">
-                        Are you sure you want to delete this successor slot? This action cannot be undone.
-                      </p>
-                      <div className="flex gap-3">
-                        <button
-                          onClick={confirmDelete}
-                          className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
-                        >
-                          Yes, Delete
-                        </button>
-                        <button
-                          onClick={cancelDelete}
-                          className="flex-1 px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors text-sm font-medium"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
                     <button
-                      onClick={() => deleteSuccessorSlot(successor.id)}
-                      className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-700 border-2 border-red-200 rounded-lg hover:bg-red-100 transition-colors text-sm font-medium"
+                      onClick={() => handleDeleteSuccessor(successor.id)}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                     >
-                      <Trash2 size={16} />
-                      Delete Slot
+                      <Trash2 size={18} />
                     </button>
-                  )}
+                  </div>
+
+                  {/* Guidepost Section */}
+                  <div className="mt-4 pt-4 border-t border-slate-200">
+                    {editingGuidepost === successor.id ? (
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                          Guidepost Instructions
+                        </label>
+                        <textarea
+                          defaultValue={successor.guidepost_instructions || ''}
+                          rows={4}
+                          className="w-full px-3 py-2 border-2 border-slate-300 rounded-lg focus:border-blue-500 outline-none"
+                          placeholder="Enter instructions for this successor..."
+                          onBlur={(e) => handleUpdateGuidepost(successor.id, e.target.value)}
+                        />
+                        <div className="flex gap-2 mt-2">
+                          <button
+                            onClick={(e) => {
+                              const textarea = e.currentTarget.parentElement?.previousElementSibling as HTMLTextAreaElement
+                              handleUpdateGuidepost(successor.id, textarea.value)
+                            }}
+                            className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                          >
+                            Save
+                          </button>
+                          <button
+                            onClick={() => setEditingGuidepost(null)}
+                            className="px-3 py-1 bg-slate-200 text-slate-700 text-sm rounded hover:bg-slate-300"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-sm font-medium text-slate-700">
+                            Guidepost Instructions
+                          </span>
+                          <button
+                            onClick={() => setEditingGuidepost(successor.id)}
+                            className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
+                          >
+                            <Edit size={14} />
+                            Edit
+                          </button>
+                        </div>
+                        <p className="text-sm text-slate-600 bg-slate-50 p-3 rounded">
+                          {successor.guidepost_instructions || 'No instructions set yet'}
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
           )}
         </div>
-      </div>
+      </main>
+
+      {/* Add Successor Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h3 className="text-xl font-bold text-slate-900 mb-4">Add New Successor</h3>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                const formData = new FormData(e.currentTarget)
+                handleAddSuccessor(
+                  formData.get('email') as string,
+                  formData.get('fullName') as string
+                )
+              }}
+              className="flex flex-col gap-4"
+            >
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  name="fullName"
+                  required
+                  className="w-full px-3 py-2 border-2 border-slate-300 rounded-lg focus:border-blue-500 outline-none"
+                  placeholder="John Doe"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  name="email"
+                  required
+                  className="w-full px-3 py-2 border-2 border-slate-300 rounded-lg focus:border-blue-500 outline-none"
+                  placeholder="john@example.com"
+                />
+              </div>
+              <div className="flex gap-3 mt-2">
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  Add Successor
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="flex-1 px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
