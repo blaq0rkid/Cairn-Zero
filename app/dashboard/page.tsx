@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { useRouter } from 'next/navigation'
-import { Plus, Trash2, Edit } from 'lucide-react'
+import { Plus, Trash2, Edit, CheckCircle, X } from 'lucide-react'
 import FounderCheckIn from '@/components/FounderCheckIn'
 import SystemHealthIndicator from '@/components/SystemHealthIndicator'
 
@@ -28,12 +28,22 @@ export default function FounderDashboard() {
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingGuidepost, setEditingGuidepost] = useState<string | null>(null)
   const [guidepostText, setGuidepostText] = useState('')
+  const [notification, setNotification] = useState<{ type: 'success' | 'info', message: string } | null>(null)
 
   useEffect(() => {
     checkAuth()
     loadSuccessors()
     setupRealtimeSubscription()
   }, [])
+
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => {
+        setNotification(null)
+      }, 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [notification])
 
   const checkAuth = async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -106,6 +116,7 @@ export default function FounderDashboard() {
     if (!error) {
       setShowAddModal(false)
       loadSuccessors()
+      setNotification({ type: 'success', message: 'Successor added successfully' })
     }
   }
 
@@ -121,6 +132,7 @@ export default function FounderDashboard() {
 
     if (!error) {
       loadSuccessors()
+      setNotification({ type: 'success', message: 'Successor deleted' })
     }
   }
 
@@ -139,12 +151,14 @@ export default function FounderDashboard() {
       setEditingGuidepost(null)
       setGuidepostText('')
       loadSuccessors()
+      setNotification({ type: 'success', message: 'Instructions saved successfully' })
     }
   }
 
   const handleCancelEdit = () => {
     setEditingGuidepost(null)
     setGuidepostText('')
+    setNotification({ type: 'info', message: 'Edit cancelled' })
   }
 
   const getStatusBadge = (status: string, legalAccepted: string | null) => {
@@ -194,6 +208,24 @@ export default function FounderDashboard() {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      {/* Notification Toast */}
+      {notification && (
+        <div className="fixed top-4 right-4 z-50 animate-slide-in">
+          <div className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg ${
+            notification.type === 'success' 
+              ? 'bg-green-50 border-2 border-green-200 text-green-800' 
+              : 'bg-blue-50 border-2 border-blue-200 text-blue-800'
+          }`}>
+            {notification.type === 'success' ? (
+              <CheckCircle size={20} />
+            ) : (
+              <X size={20} />
+            )}
+            <span className="font-medium">{notification.message}</span>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="bg-white border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -399,6 +431,22 @@ export default function FounderDashboard() {
           </div>
         </div>
       )}
+
+      <style jsx>{`
+        @keyframes slide-in {
+          from {
+            transform: translateX(100%);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+        .animate-slide-in {
+          animation: slide-in 0.3s ease-out;
+        }
+      `}</style>
     </div>
   )
 }
