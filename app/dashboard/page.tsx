@@ -27,6 +27,7 @@ export default function FounderDashboard() {
   const [loading, setLoading] = useState(true)
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingGuidepost, setEditingGuidepost] = useState<string | null>(null)
+  const [guidepostText, setGuidepostText] = useState('')
 
   useEffect(() => {
     checkAuth()
@@ -123,16 +124,27 @@ export default function FounderDashboard() {
     }
   }
 
-  const handleUpdateGuidepost = async (successorId: string, instructions: string) => {
+  const startEditingGuidepost = (successor: Successor) => {
+    setEditingGuidepost(successor.id)
+    setGuidepostText(successor.guidepost_instructions || '')
+  }
+
+  const handleSaveGuidepost = async (successorId: string) => {
     const { error } = await supabase
       .from('successors')
-      .update({ guidepost_instructions: instructions })
+      .update({ guidepost_instructions: guidepostText })
       .eq('id', successorId)
 
     if (!error) {
       setEditingGuidepost(null)
+      setGuidepostText('')
       loadSuccessors()
     }
+  }
+
+  const handleCancelEdit = () => {
+    setEditingGuidepost(null)
+    setGuidepostText('')
   }
 
   const getStatusBadge = (status: string, legalAccepted: string | null) => {
@@ -280,25 +292,22 @@ export default function FounderDashboard() {
                           Guidepost Instructions
                         </label>
                         <textarea
-                          defaultValue={successor.guidepost_instructions || ''}
+                          value={guidepostText}
+                          onChange={(e) => setGuidepostText(e.target.value)}
                           rows={4}
                           className="w-full px-3 py-2 border-2 border-slate-300 rounded-lg focus:border-blue-500 outline-none"
                           placeholder="Enter instructions for this successor..."
-                          onBlur={(e) => handleUpdateGuidepost(successor.id, e.target.value)}
                         />
                         <div className="flex gap-2 mt-2">
                           <button
-                            onClick={(e) => {
-                              const textarea = e.currentTarget.parentElement?.previousElementSibling as HTMLTextAreaElement
-                              handleUpdateGuidepost(successor.id, textarea.value)
-                            }}
-                            className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                            onClick={() => handleSaveGuidepost(successor.id)}
+                            className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700"
                           >
                             Save
                           </button>
                           <button
-                            onClick={() => setEditingGuidepost(null)}
-                            className="px-3 py-1 bg-slate-200 text-slate-700 text-sm rounded hover:bg-slate-300"
+                            onClick={handleCancelEdit}
+                            className="px-4 py-2 bg-slate-200 text-slate-700 text-sm rounded-lg hover:bg-slate-300"
                           >
                             Cancel
                           </button>
@@ -311,7 +320,7 @@ export default function FounderDashboard() {
                             Guidepost Instructions
                           </span>
                           <button
-                            onClick={() => setEditingGuidepost(successor.id)}
+                            onClick={() => startEditingGuidepost(successor)}
                             className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
                           >
                             <Edit size={14} />
