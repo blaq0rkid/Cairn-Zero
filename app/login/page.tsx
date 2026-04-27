@@ -10,76 +10,87 @@ export default function LoginPage() {
   const router = useRouter()
   const supabase = createClientComponentClient()
   const [showWarning, setShowWarning] = useState(false)
-  const [pendingCredentials, setPendingCredentials] = useState<{ email: string; password: string } | null>(null)
+  const [userId, setUserId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    setLoading(true)
+    setError('')
+
     const formData = new FormData(e.currentTarget)
     const email = formData.get('email') as string
     const password = formData.get('password') as string
 
-    // Check if user has accepted sovereignty warning
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('sovereignty_warning_accepted')
-      .eq('email', email)
-      .single()
+    try {
+      // Sign in with Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      })
 
-    if (!profile?.sovereignty_warning_accepted) {
-      setPendingCredentials({ email, password })
-      setShowWarning(true)
-      return
-    }
+      if (authError) throw authError
 
-    // Proceed with login
-    await performLogin(email, password)
-  }
+      if (authData.user) {
+        // Check if user has accepted sovereignty warning
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('sovereignty_warning_accepted')
+          .eq('id', authData.user.id)
+          .single()
 
-  const performLogin = async (email: string, password: string) => {
-    setLoading(true)
-    setError('')
-
-    const { error: authError } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    })
-
-    if (authError) {
-      setError(authError.message)
+        if (!profile?.sovereignty_warning_accepted) {
+          // Show warning modal
+          setUserId(authData.user.id)
+          setShowWarning(true)
+          setLoading(false)
+        } else {
+          // Already accepted, go to dashboard
+          router.push('/dashboard')
+        }
+      }
+    } catch (err: any) {
+      setError(err.message || 'Invalid email or password')
       setLoading(false)
-      return
     }
-
-    router.push('/dashboard')
   }
 
   const handleAcceptSovereignty = async () => {
-    if (!pendingCredentials) return
+    if (!userId) return
 
-    const { data: { user } } = await supabase.auth.signInWithPassword({
-      email: pendingCredentials.email,
-      password: pendingCredentials.password
-    })
+    setLoading(true)
 
-    if (user) {
-      await supabase
+    try {
+      // Update profile to mark sovereignty warning as accepted
+      const { error: updateError } = await supabase
         .from('profiles')
         .update({
           sovereignty_warning_accepted: true,
           sovereignty_warning_accepted_at: new Date().toISOString()
         })
-        .eq('id', user.id)
+        .eq('id', userId)
 
+      if (updateError) throw updateError
+
+      // Close modal and redirect
+      setShowWarning(false)
+      setLoading(false)
       router.push('/dashboard')
+    } catch (err: any) {
+      setError(err.message || 'An error occurred')
+      setShowWarning(false)
+      setLoading(false)
     }
   }
 
-  const handleDeclineSovereignty = () => {
+  const handleDeclineSovereignty = async () => {
+    // Sign them out if they decline
+    await supabase.auth.signOut()
     setShowWarning(false)
-    setPendingCredentials(null)
+    setUserId(null)
     setError('You must accept the Zero-Knowledge Sovereignty terms to continue.')
+    setLoading(false)
   }
 
   return (
