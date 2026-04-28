@@ -1,135 +1,221 @@
-import { useState, useEffect } from 'react'
-import { Shield, CheckCircle, Clock, AlertCircle } from 'lucide-react'
 
-export default function SuccessionRehearsalDashboard({ founderId }: { founderId: string }) {
-  const [gate, setGate] = useState(null)
-  const [rehearsal, setRehearsal] = useState(null)
+'use client'
+
+import { useState, useEffect } from 'react'
+import { AlertCircle, CheckCircle, Clock, Users } from 'lucide-react'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+
+interface OnboardingGate {
+  id: string
+  founder_id: string
+  email_verified: boolean
+  sovereignty_confirmed: boolean
+  passkey_created: boolean
+  successor_designated: boolean
+  rehearsal_completed: boolean
+  onboarding_complete: boolean
+  completed_at: string | null
+}
+
+interface SuccessionRehearsal {
+  id: string
+  founder_id: string
+  successor_id: string
+  test_marker_id: string
+  status: string
+  sent_at: string
+  unwrapped_at: string | null
+  verified_at: string | null
+}
+
+export default function SuccessionRehearsalDashboard() {
+  const supabase = createClientComponentClient()
+  const [gate, setGate] = useState<OnboardingGate | null>(null)
+  const [rehearsals, setRehearsals] = useState<SuccessionRehearsal[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
   useEffect(() => {
-    fetchOnboardingStatus()
+    fetchData()
   }, [])
 
-  const fetchOnboardingStatus = async () => {
-    const response = await fetch(`/api/onboarding/status?founderId=${founderId}`)
-    const data = await response.json()
-    setGate(data.gate)
-    setRehearsal(data.rehearsal)
-    setLoading(false)
+  const fetchData = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
+
+      // Fetch onboarding gate
+      const { data: gateData, error: gateError } = await supabase
+        .from('onboarding_gates')
+        .select('*')
+        .eq('founder_id', user.id)
+        .single()
+
+      if (gateError) throw gateError
+      setGate(gateData)
+
+      // Fetch rehearsals
+      const { data: rehearsalData, error: rehearsalError } = await supabase
+        .from('succession_rehearsals')
+        .select('*')
+        .eq('founder_id', user.id)
+        .order('sent_at', { ascending: false })
+
+      if (rehearsalError) throw rehearsalError
+      setRehearsals(rehearsalData || [])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load data')
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const createTestMarker = async () => {
-    setLoading(true)
-    const response = await fetch('/api/rehearsal/create-test-marker', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        founderId,
-        successorId: 'successor-id-here',
-        testMessage: 'Succession bridge test successful!'
-      })
-    })
-    await fetchOnboardingStatus()
-    setLoading(false)
-  }
-
-  if (loading) return <div className="p-8">Loading...</div>
-
-  const checkpoints = [
-    { key: 'email_verified', label: 'Email Verified', icon: Shield },
-    { key: 'passkey_created', label: 'Passkey Created', icon: Shield },
-    { key: 'wallet_derived', label: 'Wallet Derived', icon: Shield },
-    { key: 'sovereignty_confirmed', label: 'Sovereignty Confirmed', icon: Shield },
-    { key: 'successor_designated', label: 'Successor Designated', icon: Shield },
-    { key: 'rehearsal_completed', label: 'Rehearsal Completed', icon: CheckCircle }
-  ]
-
-  return (
-    <div className="max-w-4xl mx-auto p-8">
-      <h1 className="text-3xl font-bold mb-8">Onboarding Progress</h1>
-
-      {/* Progress Checklist */}
-      <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
-        <h2 className="text-xl font-semibold mb-4">Setup Checklist</h2>
-        <div className="flex flex-col gap-3">
-          {checkpoints.map(({ key, label, icon: Icon }) => {
-            const completed = gate?.[key]
-            return (
-              <div key={key} className="flex items-center gap-3">
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                  completed ? 'bg-green-500' : 'bg-slate-200'
-                }`}>
-                  {completed && <CheckCircle className="text-white" size={16} />}
-                </div>
-                <span className={completed ? 'text-slate-900' : 'text-slate-500'}>
-                  {label}
-                </span>
-              </div>
-            )
-          })}
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <Clock className="animate-spin mx-auto mb-4" size={48} />
+          <p className="text-slate-600">Loading dashboard...</p>
         </div>
       </div>
+    )
+  }
 
-      {/* Rehearsal Section */}
-      {gate?.successor_designated && !gate?.rehearsal_completed && (
-        <div className="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-6 mb-8">
-          <div className="flex items-start gap-3 mb-4">
-            <AlertCircle className="text-yellow-600 flex-shrink-0" size={24} />
-            <div>
-              <h3 className="font-bold text-yellow-900 mb-2">
-                Succession Rehearsal Required
-              </h3>
-              <p className="text-sm text-yellow-800 mb-4">
-                Before your Cairn becomes active, you must complete a succession rehearsal. 
-                This ensures the succession bridge is functional.
-              </p>
-              <button
-                onClick={createTestMarker}
-                disabled={loading}
-                className="px-6 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:opacity-50"
-              >
-                {loading ? 'Creating Test Marker...' : 'Start Rehearsal'}
-              </button>
-            </div>
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md">
+          <AlertCircle className="text-red-600 mx-auto mb-4" size={48} />
+          <p className="text-red-700 text-center">{error}</p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-50 p-8">
+      <div className="max-w-4xl mx-auto">
+        <h1 className="text-3xl font-bold mb-8">Succession Rehearsal Dashboard</h1>
+
+        {/* Onboarding Progress */}
+        <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
+          <h2 className="text-xl font-semibold mb-4">Onboarding Progress</h2>
+          <div className="space-y-3">
+            <ProgressItem 
+              completed={gate?.email_verified || false} 
+              label="Email Verified" 
+            />
+            <ProgressItem 
+              completed={gate?.sovereignty_confirmed || false} 
+              label="Sovereignty Waiver Confirmed" 
+            />
+            <ProgressItem 
+              completed={gate?.passkey_created || false} 
+              label="Passkey Created" 
+            />
+            <ProgressItem 
+              completed={gate?.successor_designated || false} 
+              label="Successor Designated" 
+            />
+            <ProgressItem 
+              completed={gate?.rehearsal_completed || false} 
+              label="Rehearsal Completed" 
+            />
           </div>
         </div>
-      )}
 
-      {/* Rehearsal Status */}
-      {rehearsal && (
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          <h3 className="font-bold mb-4">Rehearsal Status</h3>
-          <div className="flex flex-col gap-2">
-            <div className="flex justify-between">
-              <span className="text-slate-600">Test Marker ID:</span>
-              <span className="font-mono text-sm">{rehearsal.test_marker_id}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-600">Status:</span>
-              <span className={`font-semibold ${
-                rehearsal.status === 'verified' ? 'text-green-600' : 'text-yellow-600'
-              }`}>
-                {rehearsal.status.toUpperCase()}
-              </span>
-            </div>
-            {rehearsal.verified_at && (
-              <div className="mt-4 p-4 bg-green-50 border-2 border-green-200 rounded-lg">
-                <p className="text-green-800 font-semibold">
-                  ✓ Rehearsal Complete! Your succession bridge is verified and functional.
+        {/* Rehearsal Section */}
+        {gate?.successor_designated && !gate?.rehearsal_completed && (
+          <div className="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-6 mb-8">
+            <div className="flex items-start gap-3 mb-4">
+              <AlertCircle className="text-yellow-600 flex-shrink-0" size={24} />
+              <div>
+                <h3 className="font-semibold text-yellow-900">Rehearsal Pending</h3>
+                <p className="text-yellow-800 text-sm mt-1">
+                  Complete your succession rehearsal to ensure your bridge is functional.
                 </p>
               </div>
-            )}
+            </div>
+            <button
+              onClick={() => window.location.href = '/rehearsal/start'}
+              className="bg-yellow-600 text-white px-6 py-2 rounded-lg hover:bg-yellow-700"
+            >
+              Start Rehearsal
+            </button>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Onboarding Complete */}
-      {gate?.onboarding_complete && (
-        <div className="mt-8 p-6 bg-green-500 text-white rounded-lg">
-          <h2 className="text-2xl font-bold mb-2">🎉 Onboarding Complete</h2>
-          <p>Your Cairn is now active and protecting your business continuity.</p>
-        </div>
+        {/* Rehearsal History */}
+        {rehearsals.length > 0 && (
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <h2 className="text-xl font-semibold mb-4">Rehearsal History</h2>
+            <div className="space-y-4">
+              {rehearsals.map((rehearsal) => (
+                <div 
+                  key={rehearsal.id}
+                  className="border border-slate-200 rounded-lg p-4"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      {rehearsal.status === 'verified' ? (
+                        <CheckCircle className="text-green-600" size={24} />
+                      ) : rehearsal.status === 'unwrapped' ? (
+                        <Clock className="text-blue-600" size={24} />
+                      ) : (
+                        <Users className="text-slate-400" size={24} />
+                      )}
+                      <div>
+                        <p className="font-medium">Test Marker: {rehearsal.test_marker_id}</p>
+                        <p className="text-sm text-slate-600">
+                          Status: <span className="capitalize">{rehearsal.status}</span>
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right text-sm text-slate-600">
+                      <p>Sent: {new Date(rehearsal.sent_at).toLocaleDateString()}</p>
+                      {rehearsal.verified_at && (
+                        <p className="text-green-600">
+                          Verified: {new Date(rehearsal.verified_at).toLocaleDateString()}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Completion Message */}
+        {gate?.onboarding_complete && (
+          <div className="bg-green-50 border-2 border-green-200 rounded-lg p-6 mt-8">
+            <div className="flex items-center gap-3">
+              <CheckCircle className="text-green-600" size={32} />
+              <div>
+                <h3 className="font-semibold text-green-900">Onboarding Complete!</h3>
+                <p className="text-green-800 text-sm mt-1">
+                  Your succession bridge is fully configured and tested.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function ProgressItem({ completed, label }: { completed: boolean; label: string }) {
+  return (
+    <div className="flex items-center gap-3">
+      {completed ? (
+        <CheckCircle className="text-green-600 flex-shrink-0" size={20} />
+      ) : (
+        <div className="w-5 h-5 rounded-full border-2 border-slate-300 flex-shrink-0" />
       )}
+      <span className={completed ? 'text-slate-900' : 'text-slate-500'}>
+        {label}
+      </span>
     </div>
   )
 }
