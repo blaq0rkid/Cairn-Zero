@@ -1,49 +1,65 @@
+
+'use client'
+
+import { useState } from 'react'
 import { useGaslessTransaction } from '@/hooks/useGaslessTransaction'
-import { ethers } from 'ethers'
+
+interface CreateSarcophagusButtonProps {
+  successorAddress: string
+  encryptedData: string 
+}
 
 export default function CreateSarcophagusButton({ 
-  userAddress, 
+  successorAddress, 
   encryptedData 
-}: { 
-  userAddress: string
-  encryptedData: string 
-}) {
-  const { executeGasless, loading } = useGaslessTransaction()
+}: CreateSarcophagusButtonProps) {
+  const { executeGaslessTransaction, loading } = useGaslessTransaction()
+  const [error, setError] = useState<string | null>(null)
 
   const handleCreate = async () => {
-    // Encode Sarcophagus creation call
-    const sarcophagusInterface = new ethers.Interface([
-      'function createSarcophagus(bytes32 sarcoId, uint256 resurrectionTime, address recipient, uint256 creationFee, uint8[] archaeologists) external payable'
-    ])
+    try {
+      setError(null)
+      
+      // Encode Sarcophagus creation call
+      // In production, this would use the actual Sarcophagus v2 contract ABI
+      const txData = encodeSarcophagusCreation(successorAddress, encryptedData)
 
-    const sarcoId = ethers.keccak256(ethers.toUtf8Bytes(`${userAddress}-${Date.now()}`))
-    const resurrectionTime = Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60) // 30 days
+      // Execute via gasless relayer
+      const txHash = await executeGaslessTransaction({
+        from: '0x...', // User's derived address
+        to: process.env.NEXT_PUBLIC_SARCOPHAGUS_CONTRACT!,
+        data: txData,
+        nonce: 0 // Would be fetched from contract
+      })
 
-    const callData = sarcophagusInterface.encodeFunctionData('createSarcophagus', [
-      sarcoId,
-      resurrectionTime,
-      userAddress,
-      ethers.parseEther('0.01'),
-      [0, 1, 2] // Archaeologist indices
-    ])
-
-    // Execute gasless (Paymaster pays gas fees)
-    const txHash = await executeGasless(
-      userAddress,
-      '0xSarcophagusContractAddress',
-      callData
-    )
-
-    console.log('Sarcophagus created:', txHash)
+      console.log('Sarcophagus created:', txHash)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create Sarcophagus')
+    }
   }
 
   return (
-    <button
-      onClick={handleCreate}
-      disabled={loading}
-      className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
-    >
-      {loading ? 'Creating Cairn...' : 'Create Cairn'}
-    </button>
+    <div>
+      <button
+        onClick={handleCreate}
+        disabled={loading}
+        className="bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-purple-700 disabled:bg-slate-300 disabled:cursor-not-allowed"
+      >
+        {loading ? 'Creating...' : 'Create Sarcophagus'}
+      </button>
+      
+      {error && (
+        <div className="mt-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+          {error}
+        </div>
+      )}
+    </div>
   )
+}
+
+// Helper function to encode Sarcophagus creation
+function encodeSarcophagusCreation(recipient: string, data: string): string {
+  // In production, use ethers.Interface to encode the contract call
+  // This is a placeholder for the actual implementation
+  return '0x' + Buffer.from(`create:${recipient}:${data}`).toString('hex')
 }
