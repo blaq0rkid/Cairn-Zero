@@ -1,4 +1,3 @@
-
 import PasskeyOnboarding from '@/components/PasskeyOnboarding'
 
 export default function SignupPage() {
