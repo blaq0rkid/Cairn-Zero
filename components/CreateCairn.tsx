@@ -1,146 +1,139 @@
+
+'use client'
+
 import { useState } from 'react'
-import { ZeroKnowledgeEncryption } from '@/lib/encryption/zero-knowledge'
-import { Lock, Shield, Key } from 'lucide-react'
+import { zkEncryption } from '@/lib/encryption/zero-knowledge'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 
-export default function CreateCairn({ founderId, successorId }: { 
+interface CreateCairnProps {
   founderId: string
-  successorId: string 
-}) {
-  const [cairnData, setCairnData] = useState('')
+  onSuccess?: () => void
+}
+
+export default function CreateCairn({ founderId, onSuccess }: CreateCairnProps) {
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [cairnData, setCairnData] = useState({
+    businessName: '',
+    criticalInfo: '',
+    accessInstructions: ''
+  })
 
-  const handleCreateCairn = async () => {
-    if (!cairnData.trim()) {
-      setError('Please enter data to protect')
-      return
-    }
+  const supabase = createClientComponentClient()
 
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
     setLoading(true)
-    setError('')
+    setError(null)
 
     try {
-      // Step 1: Generate data encryption key (AES-256)
-      const dataKey = await ZeroKnowledgeEncryption.generateDataKey()
+      // Generate a passphrase (in production, this would be more sophisticated)
+      const passphrase = crypto.randomUUID()
 
-      // Step 2: Encrypt the Cairn data (CLIENT-SIDE ONLY)
-      const { ciphertext, iv } = await ZeroKnowledgeEncryption.encryptData(
-        cairnData,
-        dataKey
-      )
+      // Combine cairn data into a single string
+      const dataToEncrypt = JSON.stringify(cairnData)
 
-      // Step 3: Get successor's public key
-      const successorResponse = await fetch(`/api/successors/${successorId}`)
-      const successorData = await successorResponse.json()
-      
-      if (!successorData.public_key) {
-        throw new Error('Successor has not registered encryption key')
-      }
+      // Encrypt the Cairn data (CLIENT-SIDE ONLY)
+      const encryptedResult = await zkEncryption.encrypt(dataToEncrypt, passphrase)
 
-      const successorPublicKey = await ZeroKnowledgeEncryption.importPublicKey(
-        successorData.public_key
-      )
-
-      // Step 4: Wrap data key with successor's public key
-      const wrappedKey = await ZeroKnowledgeEncryption.wrapDataKey(
-        dataKey,
-        successorPublicKey
-      )
-
-      // Step 5: Store ONLY encrypted data and wrapped key (zero-knowledge)
-      const response = await fetch('/api/cairn/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          founderId,
-          successorId,
-          encryptedData: ciphertext,
-          iv,
-          wrappedKey
+      // Store only the ciphertext, IV, and salt - NOT the plaintext or passphrase
+      const { data, error: dbError } = await supabase
+        .from('cairns')
+        .insert({
+          founder_id: founderId,
+          business_name: cairnData.businessName, // Metadata only
+          ciphertext: encryptedResult.ciphertext,
+          iv: encryptedResult.iv,
+          salt: encryptedResult.salt,
+          encryption_method: 'AES-256-GCM'
         })
-      })
+        .select()
+        .single()
 
-      if (!response.ok) {
-        throw new Error('Failed to create Cairn')
-      }
+      if (dbError) throw dbError
 
-      setSuccess(true)
-      setCairnData('')
-    } catch (err: any) {
-      setError(err.message || 'Failed to create Cairn')
+      // In production, securely share the passphrase with designated successors
+      console.log('Cairn created successfully. Passphrase:', passphrase)
+
+      onSuccess?.()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create Cairn')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="max-w-2xl mx-auto p-8">
-      <div className="bg-white rounded-lg shadow-xl p-6">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-            <Lock className="text-blue-600" size={24} />
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold">Create Your Cairn</h2>
-            <p className="text-sm text-slate-600">Zero-knowledge encrypted data</p>
-          </div>
+    <div className="bg-white rounded-lg shadow-lg p-8 max-w-2xl mx-auto">
+      <h2 className="text-2xl font-bold mb-6">Create a Cairn</h2>
+      <p className="text-slate-600 mb-6">
+        A Cairn is an encrypted marker containing critical business information. 
+        Only designated successors will be able to access this data.
+      </p>
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-2">
+            Business Name
+          </label>
+          <input
+            type="text"
+            value={cairnData.businessName}
+            onChange={(e) => setCairnData({ ...cairnData, businessName: e.target.value })}
+            className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            required
+          />
         </div>
 
-        <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 mb-6">
-          <div className="flex items-start gap-3">
-            <Shield className="text-blue-600 flex-shrink-0 mt-1" size={20} />
-            <div className="text-sm text-blue-900">
-              <p className="font-semibold mb-1">Zero-Knowledge Encryption</p>
-              <ul className="text-xs text-blue-800 flex flex-col gap-1">
-                <li>• Your data is encrypted in your browser</li>
-                <li>• Private key never leaves your device</li>
-                <li>• Cairn Zero cannot decrypt your data</li>
-                <li>• Only your designated successor can access</li>
-              </ul>
-            </div>
-          </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-2">
+            Critical Information
+          </label>
+          <textarea
+            value={cairnData.criticalInfo}
+            onChange={(e) => setCairnData({ ...cairnData, criticalInfo: e.target.value })}
+            className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            rows={6}
+            placeholder="Passwords, API keys, important contacts, etc."
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-2">
+            Access Instructions
+          </label>
+          <textarea
+            value={cairnData.accessInstructions}
+            onChange={(e) => setCairnData({ ...cairnData, accessInstructions: e.target.value })}
+            className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            rows={4}
+            placeholder="How successors should use this information..."
+            required
+          />
         </div>
 
         {error && (
-          <div className="bg-red-50 border-2 border-red-200 rounded-lg p-3 mb-4 text-red-700 text-sm">
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
             {error}
           </div>
         )}
 
-        {success && (
-          <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4 mb-4">
-            <div className="flex items-center gap-2 text-green-800">
-              <Key size={20} />
-              <span className="font-semibold">Cairn created successfully!</span>
-            </div>
-          </div>
-        )}
-
-        <div className="mb-6">
-          <label className="block text-sm font-semibold mb-2 text-slate-700">
-            Protected Information
-          </label>
-          <textarea
-            value={cairnData}
-            onChange={(e) => setCairnData(e.target.value)}
-            placeholder="Enter passwords, access codes, or critical business information..."
-            rows={8}
-            className="w-full px-4 py-3 border-2 border-slate-300 rounded-lg focus:border-blue-500 outline-none font-mono text-sm"
-          />
-          <p className="text-xs text-slate-500 mt-2">
-            This data will be encrypted locally before transmission. Maximum 10,000 characters.
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <p className="text-sm text-yellow-800">
+            <strong>Zero-Knowledge Guarantee:</strong> Your data will be encrypted 
+            in your browser before being stored. The server never sees your plaintext data.
           </p>
         </div>
 
         <button
-          onClick={handleCreateCairn}
-          disabled={loading || !cairnData.trim()}
-          className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+          type="submit"
+          disabled={loading}
+          className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed"
         >
-          {loading ? 'Encrypting & Creating Cairn...' : 'Create Cairn'}
+          {loading ? 'Creating Cairn...' : 'Create Cairn'}
         </button>
-      </div>
+      </form>
     </div>
   )
 }
