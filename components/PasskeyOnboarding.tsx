@@ -1,18 +1,20 @@
 
+'use client'
+
 import { useState } from 'react'
-import { Shield, Mail, Key, CheckCircle, AlertCircle } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Mail, Key, Shield } from 'lucide-react'
 
 export default function PasskeyOnboarding() {
-  const [step, setStep] = useState('email')
+  const router = useRouter()
   const [email, setEmail] = useState('')
   const [verificationCode, setVerificationCode] = useState('')
+  const [step, setStep] = useState<'email' | 'verify' | 'passkey' | 'complete'>('email')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [userId, setUserId] = useState(null)
-  const [ethereumAddress, setEthereumAddress] = useState(null)
 
   // Step 1: Email Entry
-  const handleEmailSubmit = async (e) => {
+  const handleEmailSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setLoading(true)
     setError('')
@@ -25,18 +27,21 @@ export default function PasskeyOnboarding() {
       })
 
       const data = await response.json()
-      if (!response.ok) throw new Error(data.error)
 
-      setStep('verification')
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send verification code')
+      }
+
+      setStep('verify')
     } catch (err) {
-      setError(err.message || 'Failed to send verification code')
+      setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
       setLoading(false)
     }
   }
 
-  // Step 2: Email Verification
-  const handleVerificationSubmit = async (e) => {
+  // Step 2: Verify Email Code
+  const handleVerifyCode = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setLoading(true)
     setError('')
@@ -49,162 +54,126 @@ export default function PasskeyOnboarding() {
       })
 
       const data = await response.json()
-      if (!response.ok) throw new Error(data.error)
 
-      setUserId(data.userId)
+      if (!response.ok) {
+        throw new Error(data.error || 'Invalid verification code')
+      }
+
+      // Store user ID for next step
+      localStorage.setItem('tempUserId', data.userId)
       setStep('passkey')
     } catch (err) {
-      setError(err.message || 'Invalid verification code')
+      setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
       setLoading(false)
     }
   }
 
-  // Step 3: Passkey Creation & Immediate Wallet Derivation
-  const handlePasskeyCreation = async () => {
+  // Step 3: Create Passkey
+  const handleCreatePasskey = async () => {
     setLoading(true)
     setError('')
 
     try {
-      // Get WebAuthn registration options from backend
+      const userId = localStorage.getItem('tempUserId')
+      if (!userId) throw new Error('User ID not found')
+
+      // Get WebAuthn registration options
       const optionsResponse = await fetch('/api/auth/passkey-registration-options', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, email })
       })
 
-      const options = await optionsResponse.json()
-      if (!optionsResponse.ok) throw new Error(options.error)
+      const { options } = await optionsResponse.json()
 
-      // Convert base64 challenge and user ID to ArrayBuffer
-      const publicKeyOptions = {
-        ...options,
-        challenge: base64ToArrayBuffer(options.challenge),
-        user: {
-          ...options.user,
-          id: base64ToArrayBuffer(options.user.id)
-        }
-      }
-
-      // Create WebAuthn credential (Passkey)
+      // Create credential using WebAuthn
       const credential = await navigator.credentials.create({
-        publicKey: publicKeyOptions
-      })
+        publicKey: {
+          ...options,
+          challenge: Uint8Array.from(atob(options.challenge), c => c.charCodeAt(0)),
+          user: {
+            ...options.user,
+            id: Uint8Array.from(atob(options.user.id), c => c.charCodeAt(0))
+          }
+        }
+      }) as PublicKeyCredential
 
-      if (!credential) throw new Error('Passkey creation cancelled')
+      if (!credential) throw new Error('Failed to create passkey')
 
-      // Extract credential data
-      const attestationResponse = credential.response
-      const credentialData = {
-        credentialId: arrayBufferToBase64(credential.rawId),
-        publicKey: arrayBufferToBase64(attestationResponse.getPublicKey()),
-        transports: attestationResponse.getTransports?.() || [],
-        authenticatorData: arrayBufferToBase64(attestationResponse.getAuthenticatorData()),
-        clientDataJSON: arrayBufferToBase64(attestationResponse.clientDataJSON),
-        attestationObject: arrayBufferToBase64(attestationResponse.attestationObject)
-      }
+      const response = credential.response as AuthenticatorAttestationResponse
 
-      // Store passkey and derive wallet address (Manifesto §3: Immediate upon Passkey creation)
-      const storeResponse = await fetch('/api/auth/complete-registration', {
+      // Complete registration
+      const registrationResponse = await fetch('/api/auth/complete-registration', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          userId, 
-          ...credentialData 
+        body: JSON.stringify({
+          userId,
+          credentialId: credential.id,
+          publicKey: btoa(String.fromCharCode(...new Uint8Array(response.getPublicKey()!))),
+          transports: response.getTransports ? response.getTransports() : [],
+          authenticatorData: btoa(String.fromCharCode(...new Uint8Array(response.getAuthenticatorData()))),
+          clientDataJSON: btoa(String.fromCharCode(...new Uint8Array(response.clientDataJSON)))
         })
       })
 
-      const storeData = await storeResponse.json()
-      if (!storeResponse.ok) throw new Error(storeData.error)
+      const data = await registrationResponse.json()
 
-      // Wallet address returned from deterministic derivation
-      setEthereumAddress(storeData.ethereumAddress)
-      setStep('sovereignty')
-    } catch (err) {
-      if (err.name === 'NotAllowedError') {
-        setError('Passkey creation was cancelled. Please try again.')
-      } else {
-        setError(err.message || 'Failed to create passkey')
+      if (!registrationResponse.ok) {
+        throw new Error(data.error || 'Failed to complete registration')
       }
+
+      localStorage.removeItem('tempUserId')
+      setStep('complete')
+
+      // Redirect to dashboard after brief delay
+      setTimeout(() => {
+        router.push('/dashboard')
+      }, 2000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
       setLoading(false)
     }
   }
 
-  // Step 4: Sovereignty Confirmation
-  const handleSovereigntyConfirmation = async () => {
-    setLoading(true)
-
-    try {
-      await fetch('/api/auth/confirm-sovereignty', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId })
-      })
-
-      window.location.href = '/dashboard'
-    } catch (err) {
-      setError(err.message || 'Confirmation failed')
-      setLoading(false)
-    }
-  }
-
-  // Utility functions
-  const base64ToArrayBuffer = (base64) => {
-    const binaryString = atob(base64.replace(/-/g, '+').replace(/_/g, '/'))
-    const bytes = new Uint8Array(binaryString.length)
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i)
-    }
-    return bytes.buffer
-  }
-
-  const arrayBufferToBase64 = (buffer) => {
-    const bytes = new Uint8Array(buffer)
-    let binary = ''
-    for (let i = 0; i < bytes.byteLength; i++) {
-      binary += String.fromCharCode(bytes[i])
-    }
-    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
-  }
-
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-8">
-        
-        {/* Email Entry */}
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-8">
+        {/* Email Step */}
         {step === 'email' && (
           <div>
-            <div className="flex items-center justify-center mb-6">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
-                <Mail className="text-blue-600" size={32} />
-              </div>
+            <div className="flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mx-auto mb-6">
+              <Mail className="text-blue-600" size={32} />
             </div>
-            <h2 className="text-2xl font-bold text-center mb-2">Create Your Cairn</h2>
-            <p className="text-slate-600 text-center mb-6">
-              Begin with email verification
-            </p>
-            
-            {error && (
-              <div className="bg-red-50 border-2 border-red-200 rounded-lg p-3 mb-4 flex items-start gap-2">
-                <AlertCircle className="text-red-600 flex-shrink-0" size={20} />
-                <span className="text-red-700 text-sm">{error}</span>
-              </div>
-            )}
+            <h2 className="text-2xl font-bold text-center mb-2">Welcome to Cairn Zero</h2>
+            <p className="text-slate-600 text-center mb-6">Enter your email to begin</p>
 
-            <form onSubmit={handleEmailSubmit} className="flex flex-col gap-4">
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="your@email.com"
-                required
-                className="w-full px-4 py-3 border-2 border-slate-300 rounded-lg focus:border-blue-500 outline-none"
-              />
+            <form onSubmit={handleEmailSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="you@example.com"
+                  required
+                />
+              </div>
+
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                  {error}
+                </div>
+              )}
+
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed"
               >
                 {loading ? 'Sending...' : 'Continue'}
               </button>
@@ -212,140 +181,90 @@ export default function PasskeyOnboarding() {
           </div>
         )}
 
-        {/* Email Verification */}
-        {step === 'verification' && (
+        {/* Verification Step */}
+        {step === 'verify' && (
           <div>
-            <div className="flex items-center justify-center mb-6">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
-                <Shield className="text-green-600" size={32} />
-              </div>
+            <div className="flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mx-auto mb-6">
+              <Shield className="text-green-600" size={32} />
             </div>
-            <h2 className="text-2xl font-bold text-center mb-2">Verify Your Email</h2>
+            <h2 className="text-2xl font-bold text-center mb-2">Check Your Email</h2>
             <p className="text-slate-600 text-center mb-6">
-              Enter the 6-digit code sent to {email}
+              We sent a verification code to <strong>{email}</strong>
             </p>
-            
-            {error && (
-              <div className="bg-red-50 border-2 border-red-200 rounded-lg p-3 mb-4 flex items-start gap-2">
-                <AlertCircle className="text-red-600 flex-shrink-0" size={20} />
-                <span className="text-red-700 text-sm">{error}</span>
-              </div>
-            )}
 
-            <form onSubmit={handleVerificationSubmit} className="flex flex-col gap-4">
-              <input
-                type="text"
-                value={verificationCode}
-                onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                placeholder="000000"
-                maxLength={6}
-                required
-                className="w-full px-4 py-3 border-2 border-slate-300 rounded-lg text-center text-2xl font-mono focus:border-blue-500 outline-none"
-              />
+            <form onSubmit={handleVerifyCode} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Verification Code
+                </label>
+                <input
+                  type="text"
+                  value={verificationCode}
+                  onChange={(e) => setVerificationCode(e.target.value)}
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-center text-2xl tracking-widest"
+                  placeholder="000000"
+                  maxLength={6}
+                  required
+                />
+              </div>
+
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                  {error}
+                </div>
+              )}
+
               <button
                 type="submit"
-                disabled={loading || verificationCode.length !== 6}
-                className="w-full px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
+                disabled={loading}
+                className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 disabled:bg-slate-300 disabled:cursor-not-allowed"
               >
-                {loading ? 'Verifying...' : 'Verify'}
+                {loading ? 'Verifying...' : 'Verify Code'}
               </button>
             </form>
           </div>
         )}
 
-        {/* Passkey Creation */}
+        {/* Passkey Creation Step */}
         {step === 'passkey' && (
           <div>
-            <div className="flex items-center justify-center mb-6">
-              <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center">
-                <Key className="text-purple-600" size={32} />
-              </div>
+            <div className="flex items-center justify-center w-16 h-16 bg-purple-100 rounded-full mx-auto mb-6">
+              <Key className="text-purple-600" size={32} />
             </div>
             <h2 className="text-2xl font-bold text-center mb-2">Create Your Passkey</h2>
             <p className="text-slate-600 text-center mb-6">
-              Your device will secure your identity
+              Use biometric authentication for secure, password-free access
             </p>
 
-            <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 mb-6">
-              <p className="text-sm text-blue-900 font-semibold mb-2">Zero-Knowledge Security:</p>
-              <ul className="text-xs text-blue-800 flex flex-col gap-1">
-                <li>• Your passkey stays on your device</li>
-                <li>• Cairn Zero never sees your private key</li>
-                <li>• You maintain complete sovereignty</li>
-              </ul>
-            </div>
-            
             {error && (
-              <div className="bg-red-50 border-2 border-red-200 rounded-lg p-3 mb-4 flex items-start gap-2">
-                <AlertCircle className="text-red-600 flex-shrink-0" size={20} />
-                <span className="text-red-700 text-sm">{error}</span>
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4">
+                {error}
               </div>
             )}
 
             <button
-              onClick={handlePasskeyCreation}
+              onClick={handleCreatePasskey}
               disabled={loading}
-              className="w-full px-6 py-3 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors"
+              className="w-full bg-purple-600 text-white py-3 rounded-lg font-semibold hover:bg-purple-700 disabled:bg-slate-300 disabled:cursor-not-allowed"
             >
               {loading ? 'Creating Passkey...' : 'Create Passkey'}
             </button>
           </div>
         )}
 
-        {/* Sovereignty Confirmation */}
-        {step === 'sovereignty' && (
-          <div>
-            <div className="flex items-center justify-center mb-6">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
-                <CheckCircle className="text-green-600" size={32} />
-              </div>
+        {/* Completion Step */}
+        {step === 'complete' && (
+          <div className="text-center">
+            <div className="flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mx-auto mb-6">
+              <Shield className="text-green-600" size={32} />
             </div>
-            <h2 className="text-2xl font-bold text-center mb-2">Sovereignty Established</h2>
-            <p className="text-slate-600 text-center mb-6">
-              Your passkey has been created
+            <h2 className="text-2xl font-bold mb-2">All Set!</h2>
+            <p className="text-slate-600 mb-4">
+              Your account has been created successfully.
             </p>
-
-            <div className="bg-slate-50 border-2 border-slate-200 rounded-lg p-4 mb-6">
-              <p className="text-xs text-slate-600 mb-2">Your Ethereum Address:</p>
-              <p className="font-mono text-sm text-slate-900 break-all">{ethereumAddress}</p>
-              <p className="text-xs text-slate-500 mt-2">
-                Derived from your passkey (no private key stored)
-              </p>
+            <div className="animate-pulse text-blue-600">
+              Redirecting to dashboard...
             </div>
-
-            <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-6 mb-6">
-              <h3 className="font-bold text-blue-900 mb-3">I acknowledge:</h3>
-              <ul className="text-sm text-blue-800 flex flex-col gap-2">
-                <li className="flex gap-2">
-                  <span>✓</span>
-                  <span>I am the sole holder of my private key</span>
-                </li>
-                <li className="flex gap-2">
-                  <span>✓</span>
-                  <span>My passkey is stored in my device hardware</span>
-                </li>
-                <li className="flex gap-2">
-                  <span>✓</span>
-                  <span>Cairn Zero cannot access my private key</span>
-                </li>
-                <li className="flex gap-2">
-                  <span>✓</span>
-                  <span>I am responsible for device security</span>
-                </li>
-                <li className="flex gap-2">
-                  <span>✓</span>
-                  <span>Loss of device may result in loss of access</span>
-                </li>
-              </ul>
-            </div>
-
-            <button
-              onClick={handleSovereigntyConfirmation}
-              disabled={loading}
-              className="w-full px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
-            >
-              {loading ? 'Confirming...' : 'Accept Zero-Knowledge Sovereignty'}
-            </button>
           </div>
         )}
       </div>
