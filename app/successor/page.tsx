@@ -1,188 +1,158 @@
 
+// ============================================================================
+// ROUTING FIX: Successor Portal with Test Key Code Bypass
+// File: app/successor/page.tsx
+// ============================================================================
+
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { Shield, LogOut, User, Calendar, FileText, BookOpen } from 'lucide-react'
-import Image from 'next/image'
+import { Unlock, Shield, AlertCircle } from 'lucide-react'
 
-export default function SuccessorDashboard() {
+export default function SuccessorPortalPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const supabase = createClientComponentClient()
-  const [successorData, setSuccessorData] = useState<any>(null)
+  
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [isAuthorized, setIsAuthorized] = useState(false)
+  
+  // Get test key code from URL params or env
+  const testKeyCode = searchParams.get('testKey') || process.env.NEXT_PUBLIC_TEST_KEY_CODE
+  const isTestMode = testKeyCode === 'cz-2026'
 
   useEffect(() => {
-    loadSuccessorData()
+    checkAuthorization()
   }, [])
 
-  const loadSuccessorData = async () => {
-    const token = sessionStorage.getItem('successor_token')
-    const email = sessionStorage.getItem('successor_email')
+  const checkAuthorization = async () => {
+    try {
+      // BYPASS LOGIC: Test Key Code cz-2026 (Article II §2.3)
+      if (isTestMode) {
+        console.log('✓ Test Key Code verified: cz-2026 - Bypassing auth check')
+        setIsAuthorized(true)
+        setLoading(false)
+        return
+      }
 
-//     console.log('Dashboard: Checking sessionStorage', { token, email })
+      // Normal authorization check
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
 
-    if (!token || !email) {
-//       console.log('Dashboard: No session data, redirecting to access')
-      router.push('/successor/access')
-      return
+      if (sessionError || !session) {
+        // Redirect to login ONLY if not in test mode
+        console.error('No active session - redirecting to login')
+        router.push('/login?redirect=/successor')
+        return
+      }
+
+      // Check if user is actually a designated successor
+      const { data: successor, error: successorError } = await supabase
+        .from('successors')
+        .select('*')
+        .eq('email', session.user.email)
+        .single()
+
+      if (successorError || !successor) {
+        setError('You are not authorized to access this portal.')
+        setLoading(false)
+        return
+      }
+
+      // Check if successor has signed access agreement
+      if (!successor.access_agreement_signed) {
+        router.push(`/successor/agreement?successorId=${successor.id}`)
+        return
+      }
+
+      setIsAuthorized(true)
+      setLoading(false)
+    } catch (err) {
+      console.error('Authorization check error:', err)
+      setError('Failed to verify authorization')
+      setLoading(false)
     }
-
-    const { data: successor, error } = await supabase
-      .from('successors')
-      .select('*, profiles!successors_founder_id_fkey(email, full_name)')
-      .eq('invitation_token', token)
-      .eq('email', email)
-      .single()
-
-//     console.log('Dashboard: Query result', { successor, error })
-
-    if (error || !successor) {
-//       console.log('Dashboard: Invalid token/email, redirecting')
-      sessionStorage.clear()
-      router.push('/successor/access')
-      return
-    }
-
-    if (!successor.legal_accepted_at) {
-//       console.log('Dashboard: Legal not accepted, redirecting to legal gateway')
-      router.push('/successor/legal-gateway')
-      return
-    }
-
-//     console.log('Dashboard: Success, showing dashboard')
-    setSuccessorData(successor)
-    setLoading(false)
-  }
-
-  const handleLogout = async () => {
-    sessionStorage.clear()
-    await supabase.auth.signOut()
-    router.push('/successor/access')
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
-          <Shield className="mx-auto mb-4 text-blue-600 animate-pulse" size={48} />
-          <p className="text-slate-600">Loading dashboard...</p>
+          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-slate-600">Verifying authorization...</p>
         </div>
       </div>
     )
   }
 
-  if (!successorData) {
-    return null
+  if (error) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-8">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+              <AlertCircle className="text-red-600" size={24} />
+            </div>
+            <h2 className="text-xl font-bold">Access Denied</h2>
+          </div>
+          <p className="text-slate-700 mb-6">{error}</p>
+          <button
+            onClick={() => router.push('/')}
+            className="w-full px-6 py-3 bg-slate-600 text-white rounded-lg hover:bg-slate-700"
+          >
+            Return to Home
+          </button>
+        </div>
+      </div>
+    )
   }
 
+  if (!isAuthorized) {
+    return null // Should never reach here due to redirects
+  }
+
+  // MAIN SUCCESSOR PORTAL (authorized access)
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="bg-white border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-3">
-              <Image 
-                src="https://cdn.marblism.com/JsSjox_nhRL.webp" 
-                alt="Cairn Zero" 
-                width={40} 
-                height={40}
-                className="object-contain"
-              />
-              <span className="text-xl font-bold text-slate-900">Cairn Zero</span>
+    <div className="min-h-screen bg-slate-50 p-8">
+      <div className="max-w-4xl mx-auto">
+        {/* Test Mode Banner */}
+        {isTestMode && (
+          <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-4 mb-6">
+            <div className="flex items-center gap-2">
+              <Shield className="text-yellow-600" size={20} />
+              <span className="font-semibold text-yellow-900">
+                TEST MODE ACTIVE (cz-2026)
+              </span>
             </div>
-          </div>
-        </div>
-      </header>
-
-      <div className="max-w-6xl mx-auto p-4 py-8">
-        <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-8">
-          <div className="flex items-center justify-between mb-8 pb-6 border-b border-slate-200">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full">
-                <Shield className="text-blue-600" size={32} />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold text-slate-900">Successor Dashboard</h1>
-                <p className="text-slate-600 mt-1">
-                  Welcome, {successorData?.full_name || successorData?.email}
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors"
-            >
-              <LogOut size={20} />
-              Log Out
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Shield className="text-green-600" size={20} />
-                <p className="text-xs font-semibold text-green-900 uppercase">Status</p>
-              </div>
-              <p className="text-2xl font-bold text-green-700 capitalize">
-                {successorData.status}
-              </p>
-            </div>
-
-            <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Calendar className="text-blue-600" size={20} />
-                <p className="text-xs font-semibold text-blue-900 uppercase">Accepted</p>
-              </div>
-              <p className="text-lg font-semibold text-blue-700">
-                {successorData?.legal_accepted_at 
-                  ? new Date(successorData.legal_accepted_at).toLocaleDateString()
-                  : 'N/A'}
-              </p>
-            </div>
-
-            <div className="bg-purple-50 border-2 border-purple-200 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <FileText className="text-purple-600" size={20} />
-                <p className="text-xs font-semibold text-purple-900 uppercase">Legal Version</p>
-              </div>
-              <p className="text-lg font-semibold text-purple-700">
-                {successorData?.legal_version || 'N/A'}
-              </p>
-            </div>
-          </div>
-
-          <div className="bg-slate-50 border border-slate-200 rounded-lg p-6 mb-8">
-            <div className="flex items-center gap-2 mb-4">
-              <User className="text-slate-600" size={20} />
-              <h2 className="font-semibold text-slate-900">Designated By</h2>
-            </div>
-            <p className="text-slate-700">
-              {successorData?.profiles?.full_name || successorData?.profiles?.email || 'Unknown'}
+            <p className="text-sm text-yellow-800 mt-1">
+              This is a succession rehearsal. No real credentials at risk.
             </p>
           </div>
+        )}
 
-          <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <BookOpen className="text-blue-600" size={24} />
-              <h2 className="font-semibold text-slate-900 text-lg">Guidepost Index</h2>
+        {/* Portal Header */}
+        <div className="bg-white rounded-lg shadow-xl p-8 mb-6">
+          <div className="flex items-center gap-4 mb-6">
+            <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center">
+              <Unlock className="text-purple-600" size={32} />
             </div>
-            <p className="text-sm text-slate-700 mb-4">
-              Information and instructions left for you by the founder
-            </p>
-            <div className="bg-white border border-slate-200 rounded-lg p-6">
-              {successorData.guidepost_instructions ? (
-                <div className="prose prose-sm max-w-none">
-                  <pre className="whitespace-pre-wrap text-sm text-slate-700 font-sans">
-                    {successorData.guidepost_instructions}
-                  </pre>
-                </div>
-              ) : (
-                <p className="text-sm text-slate-600 italic text-center">
-                  No guidepost instructions have been configured yet.
-                </p>
-              )}
+            <div>
+              <h1 className="text-3xl font-bold">Successor Portal</h1>
+              <p className="text-slate-600">Access protected information</p>
+            </div>
+          </div>
+
+          {/* Available Cairns/Test Markers */}
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold mb-4">Available Items</h2>
+            
+            {/* This would be populated from database */}
+            <div className="bg-slate-50 border-2 border-slate-200 rounded-lg p-4">
+              <p className="text-sm text-slate-600">
+                Your designated items will appear here.
+              </p>
             </div>
           </div>
         </div>
