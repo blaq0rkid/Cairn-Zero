@@ -1,4 +1,12 @@
+
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 import { ethers } from 'ethers'
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 export async function POST(req: NextRequest) {
   try {
@@ -46,26 +54,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: passkeyError.message }, { status: 500 })
     }
 
-    // ========================================================================
-    // SOVEREIGN WALLET DERIVATION (Manifesto §3: Immediate upon Passkey creation)
-    // ========================================================================
-    
-    // Decode public key to derive Ethereum address
+    // Derive Ethereum address from public key
     const publicKeyBuffer = Buffer.from(publicKey, 'base64url')
     
-    // Extract uncompressed public key (skip first byte if 0x04 prefix exists)
     let uncompressedKey = publicKeyBuffer
     if (publicKeyBuffer[0] === 0x04) {
       uncompressedKey = publicKeyBuffer.slice(1)
     }
     
-    // Hash the public key with Keccak-256
     const publicKeyHash = ethers.keccak256(uncompressedKey)
-    
-    // Take last 20 bytes as Ethereum address
     const ethereumAddress = ethers.getAddress('0x' + publicKeyHash.slice(-40))
 
-    // Update profile with derived wallet address (address only, no private key)
+    // Update profile with derived wallet address
     const { error: walletError } = await supabase
       .from('profiles')
       .update({
