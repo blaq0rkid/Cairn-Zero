@@ -1,55 +1,86 @@
+
 import { useState } from 'react'
 import { ethers } from 'ethers'
-import { GaslessTransactionBuilder } from '@/lib/relayer/transaction-builder'
-import { signMetaTransaction } from '@/lib/relayer/eip712'
-import { getRelayerConfig } from '@/lib/relayer/config'
+
+// Extend Window interface to include ethereum
+declare global {
+  interface Window {
+    ethereum?: any
+  }
+}
+
+interface MetaTransactionRequest {
+  from: string
+  to: string
+  data: string
+  nonce: number
+}
 
 export function useGaslessTransaction() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const executeGasless = async (
-    userAddress: string,
-    targetContract: string,
-    callData: string,
-    value: bigint = BigInt(0)
+  const signMetaTransaction = async (
+    provider: ethers.BrowserProvider,
+    request: MetaTransactionRequest,
+    userAddress: string
   ) => {
+    const signer = await provider.getSigner()
+    
+    const message = ethers.solidityPackedKeccak256(
+      ['address', 'address', 'bytes', 'uint256'],
+      [request.from, request.to, request.data, request.nonce]
+    )
+
+    return await signer.signMessage(ethers.getBytes(message))
+  }
+
+  const executeGaslessTransaction = async (request: MetaTransactionRequest) => {
     setLoading(true)
     setError(null)
 
     try {
-      // Initialize builder
-      const builder = new GaslessTransactionBuilder()
-      const config = getRelayerConfig()
-
-      // Build meta-transaction
-      const request = await builder.buildMetaTransaction(
-        userAddress,
-        targetContract,
-        callData,
-        value
-      )
+      if (!window.ethereum) {
+        throw new Error('No Web3 provider found')
+      }
 
       // Get user's signature via WebAuthn wallet
       const provider = new ethers.BrowserProvider(window.ethereum)
       const signature = await signMetaTransaction(
         provider,
         request,
-        config.chainId,
-        config.forwarderAddress
+        request.from
       )
 
-      // Submit to relayer (backend pays gas)
-      const txHash = await builder.submitMetaTransaction(request, signature)
+      // Send to relayer
+      const response = await fetch('/api/relayer/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          request,
+          signature
+        })
+      })
 
-      setLoading(false)
-      return txHash
-    } catch (err: any) {
-      setError(err.message || 'Transaction failed')
-      setLoading(false)
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Transaction failed')
+      }
+
+      return data.txHash
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Transaction failed'
+      setError(errorMessage)
       throw err
+    } finally {
+      setLoading(false)
     }
   }
 
-  return { executeGasless, loading, error }
+  return {
+    executeGaslessTransaction,
+    loading,
+    error
+  }
 }
