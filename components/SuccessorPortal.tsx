@@ -25,14 +25,23 @@ export default function SuccessorPortal({ isTestMode = false }: { isTestMode?: b
 
   const fetchRehearsals = async () => {
     try {
-      const { data, error } = await supabase
-        .from('succession_rehearsals')
-        .select('*')
-        .eq('status', 'sent')
-        .order('sent_at', { ascending: false })
+      // In test mode, fetch via API route to bypass RLS
+      if (isTestMode) {
+        const response = await fetch('/api/test/rehearsals')
+        if (!response.ok) throw new Error('Failed to fetch test rehearsals')
+        const data = await response.json()
+        setRehearsals(data.rehearsals || [])
+      } else {
+        // Normal authenticated query
+        const { data, error } = await supabase
+          .from('succession_rehearsals')
+          .select('*')
+          .eq('status', 'sent')
+          .order('sent_at', { ascending: false })
 
-      if (error) throw error
-      setRehearsals(data || [])
+        if (error) throw error
+        setRehearsals(data || [])
+      }
     } catch (err) {
       console.error('Error fetching rehearsals:', err)
     } finally {
@@ -104,6 +113,11 @@ export default function SuccessorPortal({ isTestMode = false }: { isTestMode?: b
           <p className="text-slate-600">
             No items available at this time.
           </p>
+          {isTestMode && (
+            <p className="text-xs text-slate-500 mt-2">
+              Debug: Test mode active, but no rehearsals found in database
+            </p>
+          )}
         </div>
       </div>
     )
