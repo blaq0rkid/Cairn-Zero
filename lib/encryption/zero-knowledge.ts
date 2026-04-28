@@ -24,7 +24,7 @@ export class ZeroKnowledgeEncryption {
     return crypto.subtle.deriveKey(
       {
         name: 'PBKDF2',
-        salt,
+        salt: salt.buffer as ArrayBuffer,
         iterations: 100000,
         hash: 'SHA-256'
       },
@@ -51,7 +51,7 @@ export class ZeroKnowledgeEncryption {
     const encrypted = await crypto.subtle.encrypt(
       {
         name: this.algorithm,
-        iv
+        iv: iv.buffer as ArrayBuffer
       },
       key,
       encoder.encode(data)
@@ -74,11 +74,12 @@ export class ZeroKnowledgeEncryption {
     passphrase: string
   ): Promise<string> {
     const key = await this.deriveKey(passphrase, this.base64ToUint8Array(salt))
+    const ivArray = this.base64ToUint8Array(iv)
 
     const decrypted = await crypto.subtle.decrypt(
       {
         name: this.algorithm,
-        iv: this.base64ToUint8Array(iv)
+        iv: ivArray.buffer as ArrayBuffer
       },
       key,
       this.base64ToArrayBuffer(ciphertext)
