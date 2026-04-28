@@ -25,14 +25,12 @@ export default function SuccessorPortal({ isTestMode = false }: { isTestMode?: b
 
   const fetchRehearsals = async () => {
     try {
-      // In test mode, fetch via API route to bypass RLS
       if (isTestMode) {
         const response = await fetch('/api/test/rehearsals')
         if (!response.ok) throw new Error('Failed to fetch test rehearsals')
         const data = await response.json()
         setRehearsals(data.rehearsals || [])
       } else {
-        // Normal authenticated query
         const { data, error } = await supabase
           .from('succession_rehearsals')
           .select('*')
@@ -58,7 +56,7 @@ export default function SuccessorPortal({ isTestMode = false }: { isTestMode?: b
       <div className="bg-white rounded-lg shadow-lg p-8">
         <button
           onClick={() => setSelectedMarker(null)}
-          className="mb-4 text-blue-600 hover:text-blue-800"
+          className="mb-4 text-blue-600 hover:text-blue-800 font-semibold"
         >
           ← Back to list
         </button>
@@ -115,7 +113,7 @@ export default function SuccessorPortal({ isTestMode = false }: { isTestMode?: b
           </p>
           {isTestMode && (
             <p className="text-xs text-slate-500 mt-2">
-              Debug: Test mode active, but no rehearsals found in database
+              Debug: Test mode active, checking database...
             </p>
           )}
         </div>
