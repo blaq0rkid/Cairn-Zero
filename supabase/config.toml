@@ -1,0 +1,18 @@
+```toml
+[
+project
+]
+ref = "your-project-ref"
+
+[
+auth
+]
+enabled = true
+email_confirmation = false
+
+[
+auth.email
+]
+enable_signup = true
+double_confirm_changes = false
+enable_confirmations = false
