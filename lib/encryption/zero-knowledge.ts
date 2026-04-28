@@ -1,91 +1,87 @@
+
+/**
+ * Zero-Knowledge Encryption Module
+ * Provides client-side encryption for sensitive data
+ */
+
 export class ZeroKnowledgeEncryption {
-  
+  private algorithm = 'AES-GCM'
+  private keyLength = 256
+
   /**
-   * Generate AES-GCM encryption key (symmetric)
-   * Used for encrypting the actual Cairn data
+   * Generate a cryptographic key from a passphrase
    */
-  static async generateDataKey(): Promise<CryptoKey> {
-    return await crypto.subtle.generateKey(
+  async deriveKey(passphrase: string, salt: Uint8Array): Promise<CryptoKey> {
+    const encoder = new TextEncoder()
+    const passphraseKey = await crypto.subtle.importKey(
+      'raw',
+      encoder.encode(passphrase),
+      'PBKDF2',
+      false,
+      ['deriveBits', 'deriveKey']
+    )
+
+    return crypto.subtle.deriveKey(
       {
-        name: 'AES-GCM',
-        length: 256
+        name: 'PBKDF2',
+        salt,
+        iterations: 100000,
+        hash: 'SHA-256'
       },
-      true, // extractable
+      passphraseKey,
+      { name: this.algorithm, length: this.keyLength },
+      false,
       ['encrypt', 'decrypt']
     )
   }
 
   /**
-   * Generate RSA-OAEP key pair for key wrapping
-   * Public key shared with successors, private key stays with founder
+   * Encrypt data with zero-knowledge encryption
    */
-  static async generateKeyPair(): Promise<CryptoKeyPair> {
-    return await crypto.subtle.generateKey(
-      {
-        name: 'RSA-OAEP',
-        modulusLength: 4096,
-        publicExponent: new Uint8Array([1, 0, 1]),
-        hash: 'SHA-256'
-      },
-      true,
-      ['wrapKey', 'unwrapKey']
-    )
-  }
-
-  /**
-   * Encrypt data (Cairn content) - CLIENT-SIDE ONLY
-   * @param plaintext - The secret data to encrypt
-   * @param dataKey - AES key for encryption
-   * @returns Base64-encoded ciphertext with IV
-   */
-  static async encryptData(
-    plaintext: string,
-    dataKey: CryptoKey
-  ): Promise<{ ciphertext: string; iv: string }> {
+  async encrypt(data: string, passphrase: string): Promise<{
+    ciphertext: string
+    iv: string
+    salt: string
+  }> {
     const encoder = new TextEncoder()
-    const data = encoder.encode(plaintext)
-
-    // Generate random IV (Initialization Vector)
+    const salt = crypto.getRandomValues(new Uint8Array(16))
     const iv = crypto.getRandomValues(new Uint8Array(12))
+    const key = await this.deriveKey(passphrase, salt)
 
-    // Encrypt with AES-GCM
     const encrypted = await crypto.subtle.encrypt(
       {
-        name: 'AES-GCM',
+        name: this.algorithm,
         iv
       },
-      dataKey,
-      data
+      key,
+      encoder.encode(data)
     )
 
     return {
       ciphertext: this.arrayBufferToBase64(encrypted),
-      iv: this.arrayBufferToBase64(iv)
+      iv: this.uint8ArrayToBase64(iv),
+      salt: this.uint8ArrayToBase64(salt)
     }
   }
 
   /**
-   * Decrypt data (Successor unwraps the Cairn)
-   * @param ciphertext - Base64-encoded encrypted data
-   * @param iv - Base64-encoded initialization vector
-   * @param dataKey - AES key for decryption
-   * @returns Decrypted plaintext
+   * Decrypt zero-knowledge encrypted data
    */
-  static async decryptData(
+  async decrypt(
     ciphertext: string,
     iv: string,
-    dataKey: CryptoKey
+    salt: string,
+    passphrase: string
   ): Promise<string> {
-    const encryptedData = this.base64ToArrayBuffer(ciphertext)
-    const ivBuffer = this.base64ToArrayBuffer(iv)
+    const key = await this.deriveKey(passphrase, this.base64ToUint8Array(salt))
 
     const decrypted = await crypto.subtle.decrypt(
       {
-        name: 'AES-GCM',
-        iv: ivBuffer
+        name: this.algorithm,
+        iv: this.base64ToUint8Array(iv)
       },
-      dataKey,
-      encryptedData
+      key,
+      this.base64ToArrayBuffer(ciphertext)
     )
 
     const decoder = new TextDecoder()
@@ -93,111 +89,9 @@ export class ZeroKnowledgeEncryption {
   }
 
   /**
-   * Wrap (encrypt) the data key with successor's public key
-   * This allows the successor to unwrap it later
+   * Convert ArrayBuffer to base64 string
    */
-  static async wrapDataKey(
-    dataKey: CryptoKey,
-    successorPublicKey: CryptoKey
-  ): Promise<string> {
-    const wrappedKey = await crypto.subtle.wrapKey(
-      'raw',
-      dataKey,
-      successorPublicKey,
-      {
-        name: 'RSA-OAEP'
-      }
-    )
-
-    return this.arrayBufferToBase64(wrappedKey)
-  }
-
-  /**
-   * Unwrap (decrypt) the data key with successor's private key
-   * Called when succession trigger activates
-   */
-  static async unwrapDataKey(
-    wrappedKey: string,
-    successorPrivateKey: CryptoKey
-  ): Promise<CryptoKey> {
-    const wrappedKeyBuffer = this.base64ToArrayBuffer(wrappedKey)
-
-    return await crypto.subtle.unwrapKey(
-      'raw',
-      wrappedKeyBuffer,
-      successorPrivateKey,
-      {
-        name: 'RSA-OAEP'
-      },
-      {
-        name: 'AES-GCM',
-        length: 256
-      },
-      true,
-      ['encrypt', 'decrypt']
-    )
-  }
-
-  /**
-   * Export public key for storage (successor registration)
-   */
-  static async exportPublicKey(key: CryptoKey): Promise<string> {
-    const exported = await crypto.subtle.exportKey('spki', key)
-    return this.arrayBufferToBase64(exported)
-  }
-
-  /**
-   * Import public key from storage
-   */
-  static async importPublicKey(keyData: string): Promise<CryptoKey> {
-    const buffer = this.base64ToArrayBuffer(keyData)
-    return await crypto.subtle.importKey(
-      'spki',
-      buffer,
-      {
-        name: 'RSA-OAEP',
-        hash: 'SHA-256'
-      },
-      true,
-      ['wrapKey']
-    )
-  }
-
-  /**
-   * Export private key for secure storage (encrypted in device)
-   */
-  static async exportPrivateKey(key: CryptoKey): Promise<string> {
-    const exported = await crypto.subtle.exportKey('pkcs8', key)
-    return this.arrayBufferToBase64(exported)
-  }
-
-  /**
-   * Import private key from secure storage
-   */
-  static async importPrivateKey(keyData: string): Promise<CryptoKey> {
-    const buffer = this.base64ToArrayBuffer(keyData)
-    return await crypto.subtle.importKey(
-      'pkcs8',
-      buffer,
-      {
-        name: 'RSA-OAEP',
-        hash: 'SHA-256'
-      },
-      true,
-      ['unwrapKey']
-    )
-  }
-
-  /**
-   * Export AES data key for storage (will be wrapped)
-   */
-  static async exportDataKey(key: CryptoKey): Promise<string> {
-    const exported = await crypto.subtle.exportKey('raw', key)
-    return this.arrayBufferToBase64(exported)
-  }
-
-  // Utility functions
-  private static arrayBufferToBase64(buffer: ArrayBuffer): string {
+  private arrayBufferToBase64(buffer: ArrayBuffer): string {
     const bytes = new Uint8Array(buffer)
     let binary = ''
     for (let i = 0; i < bytes.byteLength; i++) {
@@ -206,12 +100,40 @@ export class ZeroKnowledgeEncryption {
     return btoa(binary)
   }
 
-  private static base64ToArrayBuffer(base64: string): ArrayBuffer {
-    const binaryString = atob(base64)
-    const bytes = new Uint8Array(binaryString.length)
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i)
+  /**
+   * Convert Uint8Array to base64 string
+   */
+  private uint8ArrayToBase64(array: Uint8Array): string {
+    let binary = ''
+    for (let i = 0; i < array.byteLength; i++) {
+      binary += String.fromCharCode(array[i])
+    }
+    return btoa(binary)
+  }
+
+  /**
+   * Convert base64 string to ArrayBuffer
+   */
+  private base64ToArrayBuffer(base64: string): ArrayBuffer {
+    const binary = atob(base64)
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i)
     }
     return bytes.buffer
   }
+
+  /**
+   * Convert base64 string to Uint8Array
+   */
+  private base64ToUint8Array(base64: string): Uint8Array {
+    const binary = atob(base64)
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i)
+    }
+    return bytes
+  }
 }
+
+export const zkEncryption = new ZeroKnowledgeEncryption()
