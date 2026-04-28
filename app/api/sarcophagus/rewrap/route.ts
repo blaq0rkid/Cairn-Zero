@@ -1,44 +1,49 @@
+
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
+
 export async function POST(req: NextRequest) {
   try {
     const { userId } = await req.json()
 
-    // Get user's Sarcophagus ID and check-in frequency
-    const { data: profile } = await supabase
+    // Verify user exists
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('sarcophagus_id, check_in_frequency_days')
+      .select('ethereum_address')
       .eq('id', userId)
       .single()
 
-    if (!profile?.sarcophagus_id) {
-      return NextResponse.json({ error: 'No Sarcophagus found' }, { status: 404 })
+    if (profileError || !profile) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    // Calculate new resurrection time
-    const newResurrectionTime = Math.floor(Date.now() / 1000) + 
-      (profile.check_in_frequency_days * 24 * 60 * 60)
-
-    // Rewrap Sarcophagus
-    const sarcoClient = new SarcophagusClient(
-      process.env.NEXT_PUBLIC_ENVIRONMENT_MODE === 'production' ? 'mainnet' : 'sepolia'
-    )
-
-    await sarcoClient.rewrapSarcophagus(profile.sarcophagus_id, newResurrectionTime)
-
-    // Update database
-    await supabase
+    // In production, this would interact with Sarcophagus v2 smart contracts
+    // to extend the "resurrection time" (rewrap the sarcophagus)
+    
+    // For now, we'll update the check-in timestamp
+    const { error: updateError } = await supabase
       .from('profiles')
       .update({
-        last_check_in: new Date().toISOString(),
-        sarcophagus_resurrection_time: new Date(newResurrectionTime * 1000).toISOString()
+        last_checkin_at: new Date().toISOString()
       })
       .eq('id', userId)
 
+    if (updateError) {
+      return NextResponse.json({ error: updateError.message }, { status: 500 })
+    }
+
     return NextResponse.json({ 
       success: true,
-      newResurrectionTime 
+      message: 'Check-in recorded successfully',
+      nextCheckIn: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days
     })
   } catch (error) {
     console.error('Rewrap error:', error)
-    return NextResponse.json({ error: 'Failed to rewrap Sarcophagus' }, { status: 500 })
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
