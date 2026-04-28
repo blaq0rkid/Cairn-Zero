@@ -1,9 +1,3 @@
-
-// ============================================================================
-// ROUTING FIX: Successor Portal with Test Key Code Bypass
-// File: app/successor/page.tsx
-// ============================================================================
-
 'use client'
 
 import { useEffect, useState } from 'react'
