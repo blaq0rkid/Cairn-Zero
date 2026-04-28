@@ -1,9 +1,11 @@
+
 'use client'
 
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { Unlock, Shield, AlertCircle } from 'lucide-react'
+import SuccessorPortal from '@/components/SuccessorPortal'
 
 export default function SuccessorPortalPage() {
   const router = useRouter()
@@ -139,16 +141,7 @@ export default function SuccessorPortalPage() {
           </div>
 
           {/* Available Cairns/Test Markers */}
-          <div className="space-y-4">
-            <h2 className="text-xl font-semibold mb-4">Available Items</h2>
-            
-            {/* This would be populated from database */}
-            <div className="bg-slate-50 border-2 border-slate-200 rounded-lg p-4">
-              <p className="text-sm text-slate-600">
-                Your designated items will appear here.
-              </p>
-            </div>
-          </div>
+          <SuccessorPortal isTestMode={isTestMode} />
         </div>
       </div>
     </div>
