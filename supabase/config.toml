@@ -1,4 +1,3 @@
-```toml
 [project]
 ref = "your-project-ref"
 
