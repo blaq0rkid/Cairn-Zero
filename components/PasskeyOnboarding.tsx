@@ -13,6 +13,16 @@ export default function PasskeyOnboarding() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
+  // Helper function to convert ArrayBuffer to base64
+  const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
+    const bytes = new Uint8Array(buffer)
+    let binary = ''
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i])
+    }
+    return btoa(binary)
+  }
+
   // Step 1: Email Entry
   const handleEmailSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -103,17 +113,17 @@ export default function PasskeyOnboarding() {
 
       const response = credential.response as AuthenticatorAttestationResponse
 
-      // Complete registration
+      // Complete registration - using helper function instead of spread operator
       const registrationResponse = await fetch('/api/auth/complete-registration', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId,
           credentialId: credential.id,
-          publicKey: btoa(String.fromCharCode(...new Uint8Array(response.getPublicKey()!))),
+          publicKey: arrayBufferToBase64(response.getPublicKey()!),
           transports: response.getTransports ? response.getTransports() : [],
-          authenticatorData: btoa(String.fromCharCode(...new Uint8Array(response.getAuthenticatorData()))),
-          clientDataJSON: btoa(String.fromCharCode(...new Uint8Array(response.clientDataJSON)))
+          authenticatorData: arrayBufferToBase64(response.getAuthenticatorData()),
+          clientDataJSON: arrayBufferToBase64(response.clientDataJSON)
         })
       })
 
