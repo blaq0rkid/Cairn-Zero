@@ -1,20 +1,25 @@
+
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
+
 export async function POST(req: NextRequest) {
   try {
     const { testMarkerId, successorSignature } = await req.json()
 
-    // Get rehearsal record
-    const { data: rehearsal } = await supabase
+    // Verify test marker exists
+    const { data: rehearsal, error: rehearsalError } = await supabase
       .from('succession_rehearsals')
-      .select('*, successors(email)')
+      .select('*')
       .eq('test_marker_id', testMarkerId)
       .single()
 
-    if (!rehearsal) {
+    if (rehearsalError || !rehearsal) {
       return NextResponse.json({ error: 'Test marker not found' }, { status: 404 })
-    }
-
-    if (rehearsal.status === 'unwrapped') {
-      return NextResponse.json({ error: 'Test marker already unwrapped' }, { status: 400 })
     }
 
     // Update rehearsal status
@@ -23,7 +28,7 @@ export async function POST(req: NextRequest) {
       .update({
         status: 'unwrapped',
         unwrapped_at: new Date().toISOString(),
-        unwrap_signature: successorSignature
+        successor_signature: successorSignature
       })
       .eq('id', rehearsal.id)
 
@@ -31,14 +36,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: updateError.message }, { status: 500 })
     }
 
-    // Return encrypted payload and decryption key for client-side decryption
-    return NextResponse.json({
+    // Update onboarding gate
+    await supabase
+      .from('onboarding_gates')
+      .update({ rehearsal_completed: true })
+      .eq('founder_id', rehearsal.founder_id)
+
+    // Notify founder of successful rehearsal
+    // (Email sending would happen here via Resend)
+
+    return NextResponse.json({ 
       success: true,
-      encryptedPayload: rehearsal.test_payload,
-      decryptionKey: rehearsal.test_encryption_key
+      message: 'Test marker unwrapped successfully',
+      payload: rehearsal.test_payload
     })
   } catch (error) {
-    console.error('Test marker unwrap error:', error)
-    return NextResponse.json({ error: 'Failed to unwrap test marker' }, { status: 500 })
+    console.error('Unwrap test marker error:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
