@@ -1,4 +1,10 @@
-**
+
+// ============================================================================
+// ENCRYPTION UTILITIES (Zero-Knowledge compliant)
+// File: lib/encryption/index.ts
+// ============================================================================
+
+/**
  * Encrypt data using Web Crypto API (local encryption only)
  * No server-side encryption per Manifesto §2
  */
