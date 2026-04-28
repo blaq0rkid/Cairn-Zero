@@ -1,18 +1,12 @@
 ```toml
-[
-project
-]
+[project]
 ref = "your-project-ref"
 
-[
-auth
-]
+[auth]
 enabled = true
 email_confirmation = false
 
-[
-auth.email
-]
+[auth.email]
 enable_signup = true
 double_confirm_changes = false
 enable_confirmations = false
