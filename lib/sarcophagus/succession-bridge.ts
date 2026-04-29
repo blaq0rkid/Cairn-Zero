@@ -17,11 +17,19 @@ interface HeartbeatConfig {
   interval: number // seconds between heartbeats
 }
 
-interface SuccessionTrigger {
-  archaeologistAddress: string
-  encryptedPayload: string
-  resurrectionTime: number
-  maximumRewrapInterval: number
+interface CairnUpdate {
+  sarcophagus_id?: string
+  blockchain_network?: string
+  resurrection_time?: string
+  last_heartbeat?: string
+  arweave_tx_id?: string
+}
+
+interface SuccessionRehearsalUpdate {
+  status?: string
+  triggered_at?: string
+  trigger_source?: string
+  blockchain_tx_id?: string
 }
 
 export class SarcophagusSuccessionBridge {
@@ -34,7 +42,12 @@ export class SarcophagusSuccessionBridge {
     this.provider = getEthereumProvider(network)
     this.supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          persistSession: false
+        }
+      }
     )
   }
 
@@ -75,15 +88,23 @@ export class SarcophagusSuccessionBridge {
       const receipt = await tx.wait()
       const sarcophagusId = receipt.logs[0].topics[1] // Extract from event
 
-      // Store blockchain reference in database
-      await this.supabase
+      // Store blockchain reference in database with explicit typing
+      const updateData: CairnUpdate = {
+        sarcophagus_id: sarcophagusId,
+        blockchain_network: this.network,
+        resurrection_time: new Date(config.resurrectionTime * 1000).toISOString(),
+        arweave_tx_id: arweaveTxId
+      }
+
+      const { error } = await this.supabase
         .from('cairns')
-        .update({
-          sarcophagus_id: sarcophagusId,
-          blockchain_network: this.network,
-          resurrection_time: new Date(config.resurrectionTime * 1000).toISOString(),
-        })
+        .update(updateData)
         .eq('id', config.cairnId)
+
+      if (error) {
+        console.error('Database update error:', error)
+        throw error
+      }
 
       console.log(`✓ Sarcophagus created: ${sarcophagusId}`)
       return sarcophagusId
@@ -103,7 +124,7 @@ export class SarcophagusSuccessionBridge {
       // Fetch cairn data
       const { data: cairn, error } = await this.supabase
         .from('cairns')
-        .select('*, profiles!inner(*)')
+        .select('*')
         .eq('id', cairnId)
         .single()
 
@@ -112,7 +133,7 @@ export class SarcophagusSuccessionBridge {
       }
 
       // Check if sarcophagus exists on-chain
-      const sarcophagusId = cairn.sarcophagus_id
+      const sarcophagusId = cairn.sarcophagus_id as string | null
       if (!sarcophagusId) {
         throw new Error('No sarcophagus ID associated with cairn')
       }
@@ -147,18 +168,24 @@ export class SarcophagusSuccessionBridge {
    */
   private async triggerSuccession(cairnId: string, sarcophagusId: string): Promise<void> {
     try {
-      // Update succession_rehearsals status
-      await this.supabase
+      // Update succession_rehearsals status with explicit typing
+      const updateData: SuccessionRehearsalUpdate = {
+        status: 'triggered',
+        triggered_at: new Date().toISOString(),
+        trigger_source: 'blockchain_sarcophagus',
+        blockchain_tx_id: sarcophagusId
+      }
+
+      const { error } = await this.supabase
         .from('succession_rehearsals')
-        .update({
-          status: 'triggered',
-          triggered_at: new Date().toISOString(),
-          trigger_source: 'blockchain_sarcophagus',
-          blockchain_tx_id: sarcophagusId
-        })
+        .update(updateData)
         .eq('cairn_id', cairnId)
 
-      // Notify successors (implement email/notification logic)
+      if (error) {
+        console.error('Database update error:', error)
+        throw error
+      }
+
       console.log(`✓ Succession triggered for cairn ${cairnId}`)
 
     } catch (error) {
@@ -174,7 +201,9 @@ export class SarcophagusSuccessionBridge {
   private async uploadToArweave(encryptedData: string): Promise<string> {
     // Placeholder - implement actual Arweave upload using arweave-js
     // For now, return mock transaction ID
-    return `arweave-tx-${Date.now()}`
+    const mockTxId = `arweave-tx-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    console.log(`Mock Arweave upload: ${mockTxId}`)
+    return mockTxId
   }
 
   /**
@@ -187,13 +216,18 @@ export class SarcophagusSuccessionBridge {
     newResurrectionTime: number
   ): Promise<string> {
     try {
-      const { data: cairn } = await this.supabase
+      const { data: cairn, error } = await this.supabase
         .from('cairns')
         .select('sarcophagus_id')
         .eq('id', cairnId)
         .single()
 
-      if (!cairn?.sarcophagus_id) {
+      if (error || !cairn) {
+        throw new Error('Cairn not found')
+      }
+
+      const sarcophagusId = cairn.sarcophagus_id as string | null
+      if (!sarcophagusId) {
         throw new Error('No sarcophagus found for cairn')
       }
 
@@ -205,8 +239,19 @@ export class SarcophagusSuccessionBridge {
       ]
 
       const contract = new ethers.Contract(contractAddress, abi, signer)
-      const tx = await contract.rewrap(cairn.sarcophagus_id, newResurrectionTime)
+      const tx = await contract.rewrap(sarcophagusId, newResurrectionTime)
       const receipt = await tx.wait()
+
+      // Update last heartbeat time
+      const updateData: CairnUpdate = {
+        last_heartbeat: new Date().toISOString(),
+        resurrection_time: new Date(newResurrectionTime * 1000).toISOString()
+      }
+
+      await this.supabase
+        .from('cairns')
+        .update(updateData)
+        .eq('id', cairnId)
 
       console.log(`✓ Heartbeat rewrapped: ${receipt.hash}`)
       return receipt.hash
