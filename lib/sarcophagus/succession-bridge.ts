@@ -17,21 +17,6 @@ interface HeartbeatConfig {
   interval: number // seconds between heartbeats
 }
 
-interface CairnUpdate {
-  sarcophagus_id?: string
-  blockchain_network?: string
-  resurrection_time?: string
-  last_heartbeat?: string
-  arweave_tx_id?: string
-}
-
-interface SuccessionRehearsalUpdate {
-  status?: string
-  triggered_at?: string
-  trigger_source?: string
-  blockchain_tx_id?: string
-}
-
 export class SarcophagusSuccessionBridge {
   private provider: ethers.JsonRpcProvider
   private supabase: ReturnType<typeof createClient>
@@ -88,17 +73,15 @@ export class SarcophagusSuccessionBridge {
       const receipt = await tx.wait()
       const sarcophagusId = receipt.logs[0].topics[1] // Extract from event
 
-      // Store blockchain reference in database with explicit typing
-      const updateData: CairnUpdate = {
-        sarcophagus_id: sarcophagusId,
-        blockchain_network: this.network,
-        resurrection_time: new Date(config.resurrectionTime * 1000).toISOString(),
-        arweave_tx_id: arweaveTxId
-      }
-
+      // Store blockchain reference in database using type assertion
       const { error } = await this.supabase
         .from('cairns')
-        .update(updateData)
+        .update({
+          sarcophagus_id: sarcophagusId,
+          blockchain_network: this.network,
+          resurrection_time: new Date(config.resurrectionTime * 1000).toISOString(),
+          arweave_tx_id: arweaveTxId
+        } as any)
         .eq('id', config.cairnId)
 
       if (error) {
@@ -168,17 +151,15 @@ export class SarcophagusSuccessionBridge {
    */
   private async triggerSuccession(cairnId: string, sarcophagusId: string): Promise<void> {
     try {
-      // Update succession_rehearsals status with explicit typing
-      const updateData: SuccessionRehearsalUpdate = {
-        status: 'triggered',
-        triggered_at: new Date().toISOString(),
-        trigger_source: 'blockchain_sarcophagus',
-        blockchain_tx_id: sarcophagusId
-      }
-
+      // Update succession_rehearsals status using type assertion
       const { error } = await this.supabase
         .from('succession_rehearsals')
-        .update(updateData)
+        .update({
+          status: 'triggered',
+          triggered_at: new Date().toISOString(),
+          trigger_source: 'blockchain_sarcophagus',
+          blockchain_tx_id: sarcophagusId
+        } as any)
         .eq('cairn_id', cairnId)
 
       if (error) {
@@ -242,15 +223,13 @@ export class SarcophagusSuccessionBridge {
       const tx = await contract.rewrap(sarcophagusId, newResurrectionTime)
       const receipt = await tx.wait()
 
-      // Update last heartbeat time
-      const updateData: CairnUpdate = {
-        last_heartbeat: new Date().toISOString(),
-        resurrection_time: new Date(newResurrectionTime * 1000).toISOString()
-      }
-
+      // Update last heartbeat time using type assertion
       await this.supabase
         .from('cairns')
-        .update(updateData)
+        .update({
+          last_heartbeat: new Date().toISOString(),
+          resurrection_time: new Date(newResurrectionTime * 1000).toISOString()
+        } as any)
         .eq('id', cairnId)
 
       console.log(`✓ Heartbeat rewrapped: ${receipt.hash}`)
