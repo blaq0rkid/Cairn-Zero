@@ -11,22 +11,24 @@ import { ethers } from 'ethers'
 export const INFURA_CONFIG = {
   apiKey: process.env.INFURA_API_KEY || 'a5827f29bdd543cfb81f7c38f84726ec',
   networks: {
-    mainnet: `https://mainnet.infura.io/v3/${process.env.INFURA_API_KEY}`,
-    sepolia: `https://sepolia.infura.io/v3/${process.env.INFURA_API_KEY}`,
-    polygon: `https://polygon-mainnet.infura.io/v3/${process.env.INFURA_API_KEY}`,
+    mainnet: `https://mainnet.infura.io/v3/${process.env.INFURA_API_KEY || 'a5827f29bdd543cfb81f7c38f84726ec'}`,
+    sepolia: `https://sepolia.infura.io/v3/${process.env.INFURA_API_KEY || 'a5827f29bdd543cfb81f7c38f84726ec'}`,
+    polygon: `https://polygon-mainnet.infura.io/v3/${process.env.INFURA_API_KEY || 'a5827f29bdd543cfb81f7c38f84726ec'}`,
   }
 }
 
 export const SARCOPHAGUS_V2_CONFIG = {
-  // Sarcophagus v2 contract addresses (update with actual deployed addresses)
+  // Sarcophagus v2 Diamond Contract (Archaeologist & Embalmer logic)
   contracts: {
     mainnet: {
-      archaeologist: '0x...', // Replace with actual mainnet address
-      embalmer: '0x...',      // Replace with actual mainnet address
+      diamond: '0x0576a174D229E3cFA37253523E645A78A0C91B57',
+      archaeologist: '0x0576a174D229E3cFA37253523E645A78A0C91B57',
+      embalmer: '0x0576a174D229E3cFA37253523E645A78A0C91B57',
     },
     sepolia: {
-      archaeologist: '0x...', // Replace with actual testnet address
-      embalmer: '0x...',      // Replace with actual testnet address
+      diamond: '0x0576a174D229E3cFA37253523E645A78A0C91B57',
+      archaeologist: '0x0576a174D229E3cFA37253523E645A78A0C91B57',
+      embalmer: '0x0576a174D229E3cFA37253523E645A78A0C91B57',
     }
   },
   // Heartbeat monitoring interval (in seconds)
@@ -88,5 +90,31 @@ export async function getNetworkStatus(network: 'mainnet' | 'sepolia' | 'polygon
     blockNumber,
     gasPrice: gasPrice.gasPrice ? ethers.formatUnits(gasPrice.gasPrice, 'gwei') : null,
     maxFeePerGas: gasPrice.maxFeePerGas ? ethers.formatUnits(gasPrice.maxFeePerGas, 'gwei') : null,
+    sarcophagusDiamond: SARCOPHAGUS_V2_CONFIG.contracts[network === 'mainnet' ? 'mainnet' : 'sepolia'].diamond
+  }
+}
+
+/**
+ * Verify Sarcophagus Diamond Contract
+ * Tests connectivity to Sarcophagus v2 protocol
+ */
+export async function verifySarcophagusContract(network: 'mainnet' | 'sepolia' = 'sepolia'): Promise<boolean> {
+  try {
+    const provider = getEthereumProvider(network)
+    const contractAddress = SARCOPHAGUS_V2_CONFIG.contracts[network].diamond
+    
+    // Check if contract exists at address
+    const code = await provider.getCode(contractAddress)
+    
+    if (code === '0x') {
+      console.error(`✗ No contract found at ${contractAddress} on ${network}`)
+      return false
+    }
+    
+    console.log(`✓ Sarcophagus Diamond contract verified at ${contractAddress} on ${network}`)
+    return true
+  } catch (error) {
+    console.error(`✗ Failed to verify Sarcophagus contract:`, error)
+    return false
   }
 }
