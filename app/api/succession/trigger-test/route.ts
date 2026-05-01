@@ -28,27 +28,25 @@ export async function POST() {
     }
 
     // Check current status
-    if (rehearsal.status === 'triggered') {
+    if (rehearsal.status === 'viewed') {
       return NextResponse.json({
         success: true,
-        message: 'Succession already triggered',
+        message: 'Succession already triggered and viewed',
         rehearsal: {
           id: rehearsal.id,
           test_marker_id: rehearsal.test_marker_id,
           status: rehearsal.status,
-          triggered_at: rehearsal.triggered_at,
-          trigger_source: rehearsal.trigger_source
+          viewed_at: rehearsal.viewed_at
         }
       })
     }
 
-    // Trigger succession
+    // Trigger succession by updating to 'viewed' status
     const { data: updated, error: updateError } = await supabase
       .from('succession_rehearsals')
       .update({
-        status: 'triggered',
-        triggered_at: new Date().toISOString(),
-        trigger_source: 'blockchain_sarcophagus_simulation'
+        status: 'viewed',
+        viewed_at: new Date().toISOString()
       } as any)
       .eq('id', rehearsal.id)
       .select()
@@ -63,13 +61,12 @@ export async function POST() {
 
     return NextResponse.json({
       success: true,
-      message: 'Succession triggered successfully',
+      message: 'Succession triggered successfully - status changed to viewed',
       rehearsal: {
         id: updated.id,
         test_marker_id: updated.test_marker_id,
         status: updated.status,
-        triggered_at: updated.triggered_at,
-        trigger_source: updated.trigger_source
+        viewed_at: updated.viewed_at
       },
       next_step: 'Visit https://cairn-zero.netlify.app/successor?testKey=cz-2026 to verify'
     })
@@ -115,8 +112,7 @@ export async function GET() {
         id: rehearsal.id,
         test_marker_id: rehearsal.test_marker_id,
         status: rehearsal.status,
-        triggered_at: rehearsal.triggered_at,
-        trigger_source: rehearsal.trigger_source,
+        viewed_at: rehearsal.viewed_at,
         sent_at: rehearsal.sent_at
       }
     })
