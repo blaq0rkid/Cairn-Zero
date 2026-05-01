@@ -45,6 +45,8 @@ next-env.d.ts
 *~
 .DS_Store
 
+arweave-keyfile.json
+
 # Supabase
 supabase/.temp/
 supabase/.branches/
