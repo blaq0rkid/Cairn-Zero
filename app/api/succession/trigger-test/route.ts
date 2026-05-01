@@ -28,10 +28,10 @@ export async function POST() {
     }
 
     // Check current status
-    if (rehearsal.status === 'viewed') {
+    if (rehearsal.status === 'unwrapped') {
       return NextResponse.json({
         success: true,
-        message: 'Succession already completed',
+        message: 'Succession already triggered and unwrapped',
         rehearsal: {
           id: rehearsal.id,
           test_marker_id: rehearsal.test_marker_id,
@@ -41,11 +41,11 @@ export async function POST() {
       })
     }
 
-    // Trigger succession by updating to 'viewed' status
+    // Trigger succession by updating to 'unwrapped' status
     const { data: updated, error: updateError } = await supabase
       .from('succession_rehearsals')
       .update({
-        status: 'viewed'
+        status: 'unwrapped'
       } as any)
       .eq('id', rehearsal.id)
       .select()
@@ -60,12 +60,13 @@ export async function POST() {
 
     return NextResponse.json({
       success: true,
-      message: 'Succession triggered successfully - status changed to viewed',
+      message: 'Succession triggered successfully - status changed to unwrapped',
       rehearsal: {
         id: updated.id,
         test_marker_id: updated.test_marker_id,
         status: updated.status,
-        sent_at: updated.sent_at
+        sent_at: updated.sent_at,
+        updated_at: updated.updated_at
       },
       next_step: 'Visit https://cairn-zero.netlify.app/successor?testKey=cz-2026 to verify'
     })
@@ -111,7 +112,8 @@ export async function GET() {
         id: rehearsal.id,
         test_marker_id: rehearsal.test_marker_id,
         status: rehearsal.status,
-        sent_at: rehearsal.sent_at
+        sent_at: rehearsal.sent_at,
+        updated_at: rehearsal.updated_at
       }
     })
 
