@@ -1,6 +1,11 @@
+
 import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
+/**
+ * Get all test succession rehearsals
+ * Uses service role key to bypass RLS for testing
+ */
 export async function GET() {
   try {
     const supabase = createClient(
@@ -11,16 +16,23 @@ export async function GET() {
     const { data, error } = await supabase
       .from('succession_rehearsals')
       .select('*')
-      .eq('status', 'sent')
       .order('sent_at', { ascending: false })
 
-    if (error) throw error
+    if (error) {
+      return NextResponse.json(
+        { error: 'Failed to fetch rehearsals', details: error },
+        { status: 500 }
+      )
+    }
 
-    return NextResponse.json({ rehearsals: data })
+    return NextResponse.json({
+      success: true,
+      rehearsals: data || []
+    })
+
   } catch (error) {
-    console.error('Error fetching test rehearsals:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch rehearsals' },
+      { error: 'Internal server error' },
       { status: 500 }
     )
   }
