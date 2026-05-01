@@ -10,20 +10,20 @@
     "lint": "next lint",
     "type-check": "tsc --noEmit"
   },
-  "dependencies": {
-    "@supabase/auth-helpers-nextjs": "^0.8.7",
-    "@supabase/supabase-js": "^2.38.4",
-    "@stripe/stripe-js": "^2.2.0",
-    "ethers": "^6.10.0",
-    "lucide-react": "^0.263.1",
-    "next": "14.0.4",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "recharts": "^2.10.3",
-    "stripe": "^14.10.0",
-    "resend": "^3.0.0",
-    "arweave": "^1.14.4"
-  },
+ "dependencies": {
+  "@supabase/auth-helpers-nextjs": "^0.8.7",
+  "@supabase/supabase-js": "^2.38.4",
+  "@stripe/stripe-js": "^2.2.0",
+  "arweave": "^1.14.4",
+  "ethers": "^6.10.0",
+  "lucide-react": "^0.263.1",
+  "next": "14.0.4",
+  "react": "^18.2.0",
+  "react-dom": "^18.2.0",
+  "recharts": "^2.10.3",
+  "resend": "^3.0.0",
+  "stripe": "^14.10.0"
+},
   "devDependencies": {
     "@types/node": "^20.10.6",
     "@types/react": "^18.2.46",
