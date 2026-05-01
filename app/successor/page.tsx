@@ -2,146 +2,149 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import { Unlock, Shield, AlertCircle } from 'lucide-react'
-import SuccessorPortal from '@/components/SuccessorPortal'
+import { useSearchParams } from 'next/navigation'
 
-export default function SuccessorPortalPage() {
-  const router = useRouter()
+interface SuccessionRehearsal {
+  id: string
+  test_marker_id: string
+  status: 'pending' | 'sent' | 'unwrapped' | 'verified' | 'failed'
+  encrypted_payload: string
+  sent_at: string
+  updated_at?: string
+}
+
+export default function SuccessorPortal() {
   const searchParams = useSearchParams()
-  const supabase = createClientComponentClient()
-  
+  const testKey = searchParams.get('testKey')
+  const [rehearsals, setRehearsals] = useState<SuccessionRehearsal[]>([])
+  const [selectedPayload, setSelectedPayload] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [isAuthorized, setIsAuthorized] = useState(false)
-  
-  // Get test key code from URL params or env
-  const testKeyCode = searchParams.get('testKey') || process.env.NEXT_PUBLIC_TEST_KEY_CODE
-  const isTestMode = testKeyCode === 'cz-2026'
+
+  const supabase = createClientComponentClient()
 
   useEffect(() => {
-    checkAuthorization()
+    fetchRehearsals()
   }, [])
 
-  const checkAuthorization = async () => {
-    try {
-      // BYPASS LOGIC: Test Key Code cz-2026 (Article II §2.3)
-      if (isTestMode) {
-        console.log('✓ Test Key Code verified: cz-2026 - Bypassing auth check')
-        setIsAuthorized(true)
-        setLoading(false)
-        return
-      }
+  async function fetchRehearsals() {
+    setLoading(true)
+    const { data, error } = await supabase
+      .from('succession_rehearsals')
+      .select('*')
+      .order('sent_at', { ascending: false })
 
-      // Normal authorization check
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-
-      if (sessionError || !session) {
-        // Redirect to login ONLY if not in test mode
-        console.error('No active session - redirecting to login')
-        router.push('/login?redirect=/successor')
-        return
-      }
-
-      // Check if user is actually a designated successor
-      const { data: successor, error: successorError } = await supabase
-        .from('successors')
-        .select('*')
-        .eq('email', session.user.email)
-        .single()
-
-      if (successorError || !successor) {
-        setError('You are not authorized to access this portal.')
-        setLoading(false)
-        return
-      }
-
-      // Check if successor has signed access agreement
-      if (!successor.access_agreement_signed) {
-        router.push(`/successor/agreement?successorId=${successor.id}`)
-        return
-      }
-
-      setIsAuthorized(true)
-      setLoading(false)
-    } catch (err) {
-      console.error('Authorization check error:', err)
-      setError('Failed to verify authorization')
-      setLoading(false)
+    if (error) {
+      console.error('Error fetching rehearsals:', error)
+    } else {
+      setRehearsals(data || [])
     }
+    setLoading(false)
+  }
+
+  const isTestMode = testKey === 'cz-2026'
+
+  const getStatusBadge = (status: string) => {
+    const colors = {
+      pending: 'bg-yellow-100 text-yellow-800',
+      sent: 'bg-blue-100 text-blue-800',
+      unwrapped: 'bg-green-100 text-green-800',
+      verified: 'bg-purple-100 text-purple-800',
+      failed: 'bg-red-100 text-red-800'
+    }
+    return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800'
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-slate-600">Verifying authorization...</p>
-        </div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-gray-600">Loading...</div>
       </div>
     )
   }
 
-  if (error) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-8">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-              <AlertCircle className="text-red-600" size={24} />
-            </div>
-            <h2 className="text-xl font-bold">Access Denied</h2>
-          </div>
-          <p className="text-slate-700 mb-6">{error}</p>
-          <button
-            onClick={() => router.push('/')}
-            className="w-full px-6 py-3 bg-slate-600 text-white rounded-lg hover:bg-slate-700"
-          >
-            Return to Home
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  if (!isAuthorized) {
-    return null // Should never reach here due to redirects
-  }
-
-  // MAIN SUCCESSOR PORTAL (authorized access)
   return (
-    <div className="min-h-screen bg-slate-50 p-8">
+    <div className="min-h-screen bg-gray-50 p-8">
+      {isTestMode && (
+        <div className="max-w-4xl mx-auto mb-6 bg-yellow-50 border-2 border-yellow-400 rounded-lg p-4">
+          <div className="flex items-center gap-2">
+            <span className="text-yellow-800 font-bold">TEST MODE ACTIVE ({testKey})</span>
+          </div>
+          <p className="text-yellow-700 text-sm mt-1">
+            This is a succession rehearsal. No real credentials at risk.
+          </p>
+        </div>
+      )}
+
       <div className="max-w-4xl mx-auto">
-        {/* Test Mode Banner */}
-        {isTestMode && (
-          <div className="bg-yellow-50 border-2 border-yellow-300 rounded-lg p-4 mb-6">
-            <div className="flex items-center gap-2">
-              <Shield className="text-yellow-600" size={20} />
-              <span className="font-semibold text-yellow-900">
-                TEST MODE ACTIVE (cz-2026)
-              </span>
-            </div>
-            <p className="text-sm text-yellow-800 mt-1">
-              This is a succession rehearsal. No real credentials at risk.
-            </p>
-          </div>
-        )}
+        <div className="bg-white rounded-lg shadow-md p-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Successor Portal</h1>
+          <p className="text-gray-600 mb-8">Access protected information</p>
 
-        {/* Portal Header */}
-        <div className="bg-white rounded-lg shadow-xl p-8 mb-6">
-          <div className="flex items-center gap-4 mb-6">
-            <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center">
-              <Unlock className="text-purple-600" size={32} />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold">Successor Portal</h1>
-              <p className="text-slate-600">Access protected information</p>
-            </div>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-semibold text-gray-800">Available Test Markers</h2>
+            <button
+              onClick={fetchRehearsals}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+            >
+              Refresh
+            </button>
           </div>
 
-          {/* Available Cairns/Test Markers */}
-          <SuccessorPortal isTestMode={isTestMode} />
+          {rehearsals.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">
+              No succession rehearsals found
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {rehearsals.map((rehearsal) => (
+                <div
+                  key={rehearsal.id}
+                  className="border border-gray-200 rounded-lg p-6 hover:border-blue-300 transition-colors"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          {rehearsal.test_marker_id}
+                        </h3>
+                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusBadge(rehearsal.status)}`}>
+                          {rehearsal.status}
+                        </span>
+                      </div>
+                      <div className="text-sm text-gray-600 space-y-1">
+                        <p>Sent: {new Date(rehearsal.sent_at).toLocaleDateString()}</p>
+                        {rehearsal.updated_at && rehearsal.status === 'unwrapped' && (
+                          <p className="text-green-600 font-medium">
+                            Unwrapped: {new Date(rehearsal.updated_at).toLocaleString()}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setSelectedPayload(
+                        selectedPayload === rehearsal.id ? null : rehearsal.id
+                      )}
+                      className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
+                    >
+                      {selectedPayload === rehearsal.id ? 'Hide' : 'View'}
+                    </button>
+                  </div>
+
+                  {selectedPayload === rehearsal.id && (
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <h4 className="text-sm font-semibold text-gray-700 mb-2">
+                        Encrypted Payload:
+                      </h4>
+                      <div className="bg-gray-50 p-4 rounded-lg font-mono text-sm text-gray-800 break-all">
+                        {rehearsal.encrypted_payload}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
