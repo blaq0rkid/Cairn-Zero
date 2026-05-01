@@ -2,7 +2,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { useSearchParams } from 'next/navigation'
 
 interface SuccessionRehearsal {
@@ -21,23 +20,21 @@ export default function SuccessorPortal() {
   const [selectedPayload, setSelectedPayload] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const supabase = createClientComponentClient()
-
   useEffect(() => {
     fetchRehearsals()
   }, [])
 
   async function fetchRehearsals() {
     setLoading(true)
-    const { data, error } = await supabase
-      .from('succession_rehearsals')
-      .select('*')
-      .order('sent_at', { ascending: false })
-
-    if (error) {
+    try {
+      const response = await fetch('/api/test/rehearsals')
+      const data = await response.json()
+      
+      if (data.success && data.rehearsals) {
+        setRehearsals(data.rehearsals)
+      }
+    } catch (error) {
       console.error('Error fetching rehearsals:', error)
-    } else {
-      setRehearsals(data || [])
     }
     setLoading(false)
   }
