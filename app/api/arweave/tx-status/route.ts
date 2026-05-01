@@ -2,6 +2,9 @@
 import { NextResponse } from 'next/server'
 import Arweave from 'arweave'
 
+// Mark this route as dynamic
+export const dynamic = 'force-dynamic'
+
 /**
  * Check Arweave Transaction Status
  * Verifies if transaction is confirmed on blockchain
