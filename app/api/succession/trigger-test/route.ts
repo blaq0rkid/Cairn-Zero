@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 
 /**
  * Simplified Succession Trigger Test
- * Triggers succession for existing test marker without requiring cairn setup
+ * Triggers succession for existing test marker
  */
 export async function POST() {
   try {
@@ -31,12 +31,12 @@ export async function POST() {
     if (rehearsal.status === 'viewed') {
       return NextResponse.json({
         success: true,
-        message: 'Succession already triggered and viewed',
+        message: 'Succession already completed',
         rehearsal: {
           id: rehearsal.id,
           test_marker_id: rehearsal.test_marker_id,
           status: rehearsal.status,
-          viewed_at: rehearsal.viewed_at
+          sent_at: rehearsal.sent_at
         }
       })
     }
@@ -45,8 +45,7 @@ export async function POST() {
     const { data: updated, error: updateError } = await supabase
       .from('succession_rehearsals')
       .update({
-        status: 'viewed',
-        viewed_at: new Date().toISOString()
+        status: 'viewed'
       } as any)
       .eq('id', rehearsal.id)
       .select()
@@ -66,7 +65,7 @@ export async function POST() {
         id: updated.id,
         test_marker_id: updated.test_marker_id,
         status: updated.status,
-        viewed_at: updated.viewed_at
+        sent_at: updated.sent_at
       },
       next_step: 'Visit https://cairn-zero.netlify.app/successor?testKey=cz-2026 to verify'
     })
@@ -112,7 +111,6 @@ export async function GET() {
         id: rehearsal.id,
         test_marker_id: rehearsal.test_marker_id,
         status: rehearsal.status,
-        viewed_at: rehearsal.viewed_at,
         sent_at: rehearsal.sent_at
       }
     })
