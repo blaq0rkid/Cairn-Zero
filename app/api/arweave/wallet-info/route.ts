@@ -1,6 +1,10 @@
 
 import { NextResponse } from 'next/server'
 import Arweave from 'arweave'
+import fs from 'fs'
+import path from 'path'
+
+export const dynamic = 'force-dynamic'
 
 /**
  * Arweave Wallet Information
@@ -14,30 +18,49 @@ export async function GET() {
       protocol: 'https'
     })
 
-    const walletKey = process.env.ARWEAVE_WALLET_KEY
-    
-    if (!walletKey) {
-      return NextResponse.json(
-        { 
-          success: false,
-          walletConfigured: false,
-          error: 'ARWEAVE_WALLET_KEY environment variable not set'
-        },
-        { status: 400 }
-      )
-    }
-
     let jwk
-    try {
-      jwk = JSON.parse(walletKey)
-    } catch (parseError) {
-      return NextResponse.json(
-        { 
-          success: false,
-          error: 'Invalid JWK format in ARWEAVE_WALLET_KEY'
-        },
-        { status: 400 }
-      )
+    const keyfilePath = path.join(process.cwd(), 'arweave-keyfile.json')
+    
+    // Check for file FIRST (priority over env var)
+    if (fs.existsSync(keyfilePath)) {
+      try {
+        const keyfileContent = fs.readFileSync(keyfilePath, 'utf8')
+        jwk = JSON.parse(keyfileContent)
+      } catch (fileError) {
+        return NextResponse.json(
+          { 
+            success: false,
+            error: 'Keyfile exists but is invalid JSON',
+            details: fileError instanceof Error ? fileError.message : 'Unknown error'
+          },
+          { status: 500 }
+        )
+      }
+    } else {
+      // Only try env var if file doesn't exist
+      const walletKey = process.env.ARWEAVE_WALLET_KEY
+      if (!walletKey) {
+        return NextResponse.json(
+          { 
+            success: false,
+            walletConfigured: false,
+            error: 'No arweave-keyfile.json found and ARWEAVE_WALLET_KEY not set'
+          },
+          { status: 400 }
+        )
+      }
+      
+      try {
+        jwk = JSON.parse(walletKey)
+      } catch (parseError) {
+        return NextResponse.json(
+          { 
+            success: false,
+            error: 'Invalid JWK format in ARWEAVE_WALLET_KEY'
+          },
+          { status: 400 }
+        )
+      }
     }
 
     const address = await arweave.wallets.jwkToAddress(jwk)
@@ -51,6 +74,7 @@ export async function GET() {
       balance: `${balanceAR} AR`,
       balanceWinston: balanceWinston,
       sufficientFunds: parseFloat(balanceAR) >= 0.001,
+      source: fs.existsSync(keyfilePath) ? 'keyfile' : 'environment',
       timestamp: new Date().toISOString()
     })
 
