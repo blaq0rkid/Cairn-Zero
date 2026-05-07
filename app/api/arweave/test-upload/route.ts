@@ -1,6 +1,10 @@
 
 import { NextResponse } from 'next/server'
 import Arweave from 'arweave'
+import fs from 'fs'
+import path from 'path'
+
+export const dynamic = 'force-dynamic'
 
 /**
  * Upload Test Data to Arweave
@@ -23,15 +27,41 @@ export async function POST(request: Request) {
       protocol: 'https'
     })
 
-    const walletKey = process.env.ARWEAVE_WALLET_KEY
-    if (!walletKey) {
-      return NextResponse.json(
-        { error: 'ARWEAVE_WALLET_KEY not configured' },
-        { status: 500 }
-      )
+    let jwk
+    const keyfilePath = path.join(process.cwd(), 'arweave-keyfile.json')
+    
+    // Check for file FIRST (priority over env var)
+    if (fs.existsSync(keyfilePath)) {
+      try {
+        const keyfileContent = fs.readFileSync(keyfilePath, 'utf8')
+        jwk = JSON.parse(keyfileContent)
+      } catch (fileError) {
+        return NextResponse.json(
+          { 
+            error: 'Keyfile exists but is invalid JSON',
+            details: fileError instanceof Error ? fileError.message : 'Unknown error'
+          },
+          { status: 500 }
+        )
+      }
+    } else {
+      const walletKey = process.env.ARWEAVE_WALLET_KEY
+      if (!walletKey) {
+        return NextResponse.json(
+          { error: 'Arweave wallet not configured' },
+          { status: 500 }
+        )
+      }
+      
+      try {
+        jwk = JSON.parse(walletKey)
+      } catch (parseError) {
+        return NextResponse.json(
+          { error: 'Invalid JWK format in ARWEAVE_WALLET_KEY' },
+          { status: 400 }
+        )
+      }
     }
-
-    const jwk = JSON.parse(walletKey)
 
     // Create transaction
     const transaction = await arweave.createTransaction({
