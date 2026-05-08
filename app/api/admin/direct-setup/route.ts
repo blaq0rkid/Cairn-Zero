@@ -29,9 +29,9 @@ export async function POST(request: Request) {
     });
     
   } catch (error) {
-    return Response.json({ 
-      error: 'Setup failed',
-      details: error.message 
-    }, { status: 500 });
-  }
+  return Response.json({ 
+    error: 'Setup failed',
+    details: error instanceof Error ? error.message : 'Unknown error'
+  }, { status: 500 });
+}
 }
