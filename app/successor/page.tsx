@@ -14,7 +14,7 @@ interface SuccessionRehearsal {
 
 export default function SuccessorPortal() {
   const searchParams = useSearchParams()
-  const testKey = searchParams.get('testKey')
+const testKey = searchParams?.get('testKey')
   const [rehearsals, setRehearsals] = useState<SuccessionRehearsal[]>([])
   const [selectedPayload, setSelectedPayload] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
