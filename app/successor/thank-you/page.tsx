@@ -13,7 +13,7 @@ export default function SuccessorThankYouPage() {
   const supabase = createClientComponentClient()
   const [successorData, setSuccessorData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const isSimulation = searchParams.get('simulation') === 'true'
+const isSimulation = searchParams?.get('simulation') === 'true'
 
   useEffect(() => {
     loadSuccessorData()
