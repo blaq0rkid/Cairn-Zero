@@ -7,8 +7,8 @@ import path from 'path'
 export const dynamic = 'force-dynamic'
 
 /**
- * Arweave Wallet Information
- * Verifies wallet configuration and displays balance
+ * Arweave Wallet Information - File-Only Mode
+ * Zero-Knowledge Compliance: No env var fallback
  */
 export async function GET() {
   try {
@@ -18,49 +18,48 @@ export async function GET() {
       protocol: 'https'
     })
 
-    let jwk
     const keyfilePath = path.join(process.cwd(), 'arweave-keyfile.json')
     
-    // Check for file FIRST (priority over env var)
-    if (fs.existsSync(keyfilePath)) {
-      try {
-        const keyfileContent = fs.readFileSync(keyfilePath, 'utf8')
-        jwk = JSON.parse(keyfileContent)
-      } catch (fileError) {
-        return NextResponse.json(
-          { 
-            success: false,
-            error: 'Keyfile exists but is invalid JSON',
-            details: fileError instanceof Error ? fileError.message : 'Unknown error'
-          },
-          { status: 500 }
-        )
-      }
-    } else {
-      // Only try env var if file doesn't exist
-      const walletKey = process.env.ARWEAVE_WALLET_KEY
-      if (!walletKey) {
-        return NextResponse.json(
-          { 
-            success: false,
-            walletConfigured: false,
-            error: 'No arweave-keyfile.json found and ARWEAVE_WALLET_KEY not set'
-          },
-          { status: 400 }
-        )
-      }
-      
-      try {
-        jwk = JSON.parse(walletKey)
-      } catch (parseError) {
-        return NextResponse.json(
-          { 
-            success: false,
-            error: 'Invalid JWK format in ARWEAVE_WALLET_KEY'
-          },
-          { status: 400 }
-        )
-      }
+    if (!fs.existsSync(keyfilePath)) {
+      return NextResponse.json(
+        { 
+          success: false,
+          walletConfigured: false,
+          error: 'arweave-keyfile.json not found in project root',
+          hint: 'Download keyfile from arweave.app and place in project root'
+        },
+        { status: 404 }
+      )
+    }
+
+    let jwk
+    try {
+      const keyfileContent = fs.readFileSync(keyfilePath, 'utf8')
+      jwk = JSON.parse(keyfileContent)
+    } catch (parseError) {
+      return NextResponse.json(
+        { 
+          success: false,
+          error: 'Invalid JSON in arweave-keyfile.json',
+          details: parseError instanceof Error ? parseError.message : 'Parse failed'
+        },
+        { status: 500 }
+      )
+    }
+
+    // Validate JWK structure
+    const requiredKeys = ['kty', 'n', 'e', 'd', 'p', 'q', 'dp', 'dq', 'qi']
+    const missingKeys = requiredKeys.filter(key => !(key in jwk))
+    
+    if (missingKeys.length > 0) {
+      return NextResponse.json(
+        { 
+          success: false,
+          error: 'Invalid JWK structure',
+          missingKeys: missingKeys
+        },
+        { status: 400 }
+      )
     }
 
     const address = await arweave.wallets.jwkToAddress(jwk)
@@ -74,7 +73,7 @@ export async function GET() {
       balance: `${balanceAR} AR`,
       balanceWinston: balanceWinston,
       sufficientFunds: parseFloat(balanceAR) >= 0.001,
-      source: fs.existsSync(keyfilePath) ? 'keyfile' : 'environment',
+      source: 'local-keyfile',
       timestamp: new Date().toISOString()
     })
 
