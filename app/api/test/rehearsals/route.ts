@@ -15,7 +15,7 @@ export async function GET() {
 
     const { data, error } = await supabase
       .from('succession_rehearsals')
-      .select('id, test_marker_id, status, payload, encrypted_payload, sent_at, updated_at')
+      .select('id, test_marker_id, status, test_payload, payload, encrypted_payload, sent_at, unwrapped_at, updated_at')
       .order('sent_at', { ascending: false })
 
     if (error) {
@@ -26,15 +26,26 @@ export async function GET() {
       )
     }
 
-    // Normalize the data to ensure payload field exists
-    const normalizedData = data?.map(rehearsal => ({
-      ...rehearsal,
-      payload: rehearsal.payload || rehearsal.encrypted_payload || 'ENCRYPTED_TEST_DATA'
-    })) || []
+    // Normalize the data - check all possible payload fields
+    const normalizedData = data?.map(rehearsal => {
+      const payloadValue = rehearsal.test_payload 
+        || rehearsal.payload 
+        || rehearsal.encrypted_payload 
+        || 'ENCRYPTED_TEST_DATA'
+      
+      return {
+        id: rehearsal.id,
+        test_marker_id: rehearsal.test_marker_id,
+        status: rehearsal.status,
+        payload: payloadValue,
+        sent_at: rehearsal.sent_at,
+        updated_at: rehearsal.updated_at || rehearsal.unwrapped_at
+      }
+    }) || []
 
     console.log('Fetched rehearsals:', normalizedData.length)
     normalizedData.forEach(r => {
-      console.log(`- ${r.test_marker_id}: status=${r.status}, hasPayload=${!!r.payload}`)
+      console.log(`- ${r.test_marker_id}: status=${r.status}, payload=${r.payload?.substring(0, 50)}...`)
     })
 
     return NextResponse.json({
