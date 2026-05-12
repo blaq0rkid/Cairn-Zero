@@ -1,3 +1,4 @@
+
 'use client'
 
 import { useEffect, useState } from 'react'
@@ -7,14 +8,15 @@ interface SuccessionRehearsal {
   id: string
   test_marker_id: string
   status: 'pending' | 'sent' | 'unwrapped' | 'verified' | 'failed'
-  encrypted_payload: string
+  payload: string
+  encrypted_payload?: string
   sent_at: string
   updated_at?: string
 }
 
 export default function SuccessorPortal() {
   const searchParams = useSearchParams()
-const testKey = searchParams?.get('testKey')
+  const testKey = searchParams?.get('testKey')
   const [rehearsals, setRehearsals] = useState<SuccessionRehearsal[]>([])
   const [selectedPayload, setSelectedPayload] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -49,6 +51,10 @@ const testKey = searchParams?.get('testKey')
       failed: 'bg-red-100 text-red-800'
     }
     return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800'
+  }
+
+  const getPayloadContent = (rehearsal: SuccessionRehearsal): string => {
+    return rehearsal.payload || rehearsal.encrypted_payload || 'No payload available'
   }
 
   if (loading) {
@@ -122,6 +128,7 @@ const testKey = searchParams?.get('testKey')
                         selectedPayload === rehearsal.id ? null : rehearsal.id
                       )}
                       className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
+                      disabled={rehearsal.status !== 'unwrapped'}
                     >
                       {selectedPayload === rehearsal.id ? 'Hide' : 'View'}
                     </button>
@@ -133,8 +140,13 @@ const testKey = searchParams?.get('testKey')
                         Encrypted Payload:
                       </h4>
                       <div className="bg-gray-50 p-4 rounded-lg font-mono text-sm text-gray-800 break-all">
-                        {rehearsal.encrypted_payload}
+                        {getPayloadContent(rehearsal)}
                       </div>
+                      {rehearsal.status === 'unwrapped' && getPayloadContent(rehearsal) !== 'No payload available' && (
+                        <div className="mt-3 text-xs text-green-600 font-medium">
+                          ✓ Payload successfully retrieved
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
